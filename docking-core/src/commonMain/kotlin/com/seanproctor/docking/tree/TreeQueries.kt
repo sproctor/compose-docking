@@ -50,6 +50,14 @@ internal fun DockNode.dockableIds(): Sequence<DockableId> = sequence {
 internal fun DockNode.containsDockable(dockableId: DockableId): Boolean =
     findLeaf(dockableId) != null
 
+/** The tab group containing [dockableId] as a member, if any. */
+internal fun DockNode.findTabsContaining(dockableId: DockableId): DockNode.Tabs? = when (this) {
+    is DockNode.Leaf, is DockNode.Anchor -> null
+    is DockNode.Tabs -> takeIf { tabs.any { it.dockableId == dockableId } }
+    is DockNode.Split ->
+        first.findTabsContaining(dockableId) ?: second.findTabsContaining(dockableId)
+}
+
 /**
  * The fraction of the window's area occupied by the leaf holding [dockableId], computed
  * purely from split proportions (a geometry-free stand-in for pixel-size comparison).
