@@ -137,8 +137,14 @@ private fun TreeContext.splitWith(
     dockableId: DockableId,
     region: DockRegion,
     proportion: Float,
+): DockNode.Split = splitWithNode(existing, newContentNode(dockableId), region, proportion)
+
+internal fun TreeContext.splitWithNode(
+    existing: DockNode,
+    newContent: DockNode,
+    region: DockRegion,
+    proportion: Float,
 ): DockNode.Split {
-    val newContent = newContentNode(dockableId)
     val newIsFirst = region == DockRegion.West || region == DockRegion.North
     return DockNode.Split(
         id = ids.next(),

@@ -70,6 +70,11 @@ public class DockState(
     internal val nodeIds: NodeIdGenerator = NodeIdGenerator()
     private var floatCounter = 0
 
+    /** Named layout snapshots (save/restore/list). */
+    public val layouts: com.seanproctor.docking.persistence.NamedLayouts by lazy {
+        com.seanproctor.docking.persistence.NamedLayouts(this)
+    }
+
     // ----- Transient UI state (never persisted) -----
 
     /** The dockable with input focus, for the active highlighter. Set by focus/press listeners. */
