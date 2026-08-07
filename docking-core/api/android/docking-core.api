@@ -1,0 +1,182 @@
+public final class com/seanproctor/docking/model/AnchorId {
+	public static final field Companion Lcom/seanproctor/docking/model/AnchorId$Companion;
+	public static final synthetic fun box-impl (Ljava/lang/String;)Lcom/seanproctor/docking/model/AnchorId;
+	public static fun constructor-impl (Ljava/lang/String;)Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Ljava/lang/String;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Ljava/lang/String;)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Ljava/lang/String;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Ljava/lang/String;
+}
+
+public final synthetic class com/seanproctor/docking/model/AnchorId$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/model/AnchorId$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun deserialize-G6BW9JI (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/String;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public final fun serialize-SJozkZ8 (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/String;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/AnchorId$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/AutoHideSide : java/lang/Enum {
+	public static final field East Lcom/seanproctor/docking/model/AutoHideSide;
+	public static final field South Lcom/seanproctor/docking/model/AutoHideSide;
+	public static final field West Lcom/seanproctor/docking/model/AutoHideSide;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/AutoHideSide;
+	public static fun values ()[Lcom/seanproctor/docking/model/AutoHideSide;
+}
+
+public final class com/seanproctor/docking/model/DockRegion : java/lang/Enum {
+	public static final field Center Lcom/seanproctor/docking/model/DockRegion;
+	public static final field East Lcom/seanproctor/docking/model/DockRegion;
+	public static final field North Lcom/seanproctor/docking/model/DockRegion;
+	public static final field South Lcom/seanproctor/docking/model/DockRegion;
+	public static final field West Lcom/seanproctor/docking/model/DockRegion;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/DockRegion;
+	public static fun values ()[Lcom/seanproctor/docking/model/DockRegion;
+}
+
+public final class com/seanproctor/docking/model/DockableId {
+	public static final field Companion Lcom/seanproctor/docking/model/DockableId$Companion;
+	public static final synthetic fun box-impl (Ljava/lang/String;)Lcom/seanproctor/docking/model/DockableId;
+	public static fun constructor-impl (Ljava/lang/String;)Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Ljava/lang/String;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Ljava/lang/String;)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Ljava/lang/String;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Ljava/lang/String;
+}
+
+public final synthetic class com/seanproctor/docking/model/DockableId$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/model/DockableId$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun deserialize-YKn-mz0 (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/String;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public final fun serialize-akpLSfE (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/String;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/DockableId$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/DockingStyle : java/lang/Enum {
+	public static final field Both Lcom/seanproctor/docking/model/DockingStyle;
+	public static final field CenterOnly Lcom/seanproctor/docking/model/DockingStyle;
+	public static final field Horizontal Lcom/seanproctor/docking/model/DockingStyle;
+	public static final field Vertical Lcom/seanproctor/docking/model/DockingStyle;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/DockingStyle;
+	public static fun values ()[Lcom/seanproctor/docking/model/DockingStyle;
+}
+
+public final class com/seanproctor/docking/model/NodeId {
+	public static final field Companion Lcom/seanproctor/docking/model/NodeId$Companion;
+	public static final synthetic fun box-impl (Ljava/lang/String;)Lcom/seanproctor/docking/model/NodeId;
+	public static fun constructor-impl (Ljava/lang/String;)Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Ljava/lang/String;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Ljava/lang/String;)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Ljava/lang/String;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Ljava/lang/String;
+}
+
+public final synthetic class com/seanproctor/docking/model/NodeId$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/model/NodeId$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun deserialize-wwAw3xE (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/String;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public final fun serialize-pdoeVrQ (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/String;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/NodeId$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/SplitOrientation : java/lang/Enum {
+	public static final field Horizontal Lcom/seanproctor/docking/model/SplitOrientation;
+	public static final field Vertical Lcom/seanproctor/docking/model/SplitOrientation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/SplitOrientation;
+	public static fun values ()[Lcom/seanproctor/docking/model/SplitOrientation;
+}
+
+public final class com/seanproctor/docking/model/TabPreference : java/lang/Enum {
+	public static final field Bottom Lcom/seanproctor/docking/model/TabPreference;
+	public static final field BottomAlways Lcom/seanproctor/docking/model/TabPreference;
+	public static final field Default Lcom/seanproctor/docking/model/TabPreference;
+	public static final field Top Lcom/seanproctor/docking/model/TabPreference;
+	public static final field TopAlways Lcom/seanproctor/docking/model/TabPreference;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/TabPreference;
+	public static fun values ()[Lcom/seanproctor/docking/model/TabPreference;
+}
+
+public final class com/seanproctor/docking/model/WindowId {
+	public static final field Companion Lcom/seanproctor/docking/model/WindowId$Companion;
+	public static final synthetic fun box-impl (Ljava/lang/String;)Lcom/seanproctor/docking/model/WindowId;
+	public static fun constructor-impl (Ljava/lang/String;)Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Ljava/lang/String;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Ljava/lang/String;)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Ljava/lang/String;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Ljava/lang/String;
+}
+
+public final synthetic class com/seanproctor/docking/model/WindowId$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/model/WindowId$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun deserialize-xXkVWNs (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/String;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public final fun serialize-0Cp-TJE (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/String;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/WindowId$Companion {
+	public final fun getMAIN-umyQrq8 ()Ljava/lang/String;
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/seanproctor/docking/model/WindowKind : java/lang/Enum {
+	public static final field Floating Lcom/seanproctor/docking/model/WindowKind;
+	public static final field Main Lcom/seanproctor/docking/model/WindowKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/model/WindowKind;
+	public static fun values ()[Lcom/seanproctor/docking/model/WindowKind;
+}
+
