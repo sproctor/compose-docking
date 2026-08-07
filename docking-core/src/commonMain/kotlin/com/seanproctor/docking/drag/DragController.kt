@@ -88,13 +88,41 @@ internal class DragController(private val state: DockState) {
     internal class RegisteredWindow(
         val windowId: WindowId,
         val scope: DockAreaScope,
-    ) {
-        /** Window-root -> shared drag space. Identity on single-window platforms. */
-        var toScreen: (Offset) -> Offset = { it }
-        var fromScreen: (Offset) -> Offset = { it }
-    }
+    )
 
     private val windows = linkedMapOf<WindowId, RegisteredWindow>()
+
+    /**
+     * Window-root <-> shared drag space converters, set by the platform window host
+     * (identity when absent — the single-window case). Kept separate from window
+     * registration so host and DockArea effects may run in any order.
+     */
+    private val converters = mutableMapOf<WindowId, ScreenConverter>()
+
+    internal class ScreenConverter(
+        val toScreen: (Offset) -> Offset,
+        val fromScreen: (Offset) -> Offset,
+    )
+
+    fun setScreenConverter(
+        windowId: WindowId,
+        toScreen: (Offset) -> Offset,
+        fromScreen: (Offset) -> Offset,
+    ) {
+        converters[windowId] = ScreenConverter(toScreen, fromScreen)
+    }
+
+    fun clearScreenConverter(windowId: WindowId) {
+        converters.remove(windowId)
+    }
+
+    internal fun toScreen(windowId: WindowId, position: Offset): Offset =
+        converters[windowId]?.toScreen?.invoke(position) ?: position
+
+    internal fun fromScreen(windowId: WindowId, position: Offset): Offset =
+        converters[windowId]?.fromScreen?.invoke(position) ?: position
+
+    internal fun registeredWindows(): List<RegisteredWindow> = windows.values.toList()
 
     /** Desktop layer override: resolve the topmost registered window at a screen point. */
     var windowResolver: ((Offset) -> WindowId?)? = null
@@ -133,8 +161,8 @@ internal class DragController(private val state: DockState) {
 
     fun updateDrag(positionInWindow: Offset, windowId: WindowId) {
         val s = session ?: return
-        val from = windows[windowId] ?: return
-        val screen = from.toScreen(positionInWindow)
+        if (windowId !in windows) return
+        val screen = toScreen(windowId, positionInWindow)
         s.screenPosition = screen
         dragListener?.onDragMoved(screen)
 
@@ -151,8 +179,8 @@ internal class DragController(private val state: DockState) {
             s.target = DropTarget.None
             return
         }
-        val hovered = windows.getValue(hoveredId)
-        val local = hovered.fromScreen(screen)
+        val hovered = windows[hoveredId] ?: return
+        val local = fromScreen(hoveredId, screen)
         s.hoveredWindow = hoveredId
         s.handles = computeHandles(hovered, local, s.payload)
         s.target = resolveTarget(hovered, local, s)
@@ -226,7 +254,7 @@ internal class DragController(private val state: DockState) {
     private fun resolveWindowAt(screen: Offset): WindowId? {
         windowResolver?.let { return it(screen) }
         return windows.values.firstOrNull { reg ->
-            reg.scope.bounds.rootBounds.contains(reg.fromScreen(screen))
+            reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen))
         }?.windowId
     }
 

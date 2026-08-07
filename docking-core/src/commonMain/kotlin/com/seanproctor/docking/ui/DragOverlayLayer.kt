@@ -71,9 +71,7 @@ internal fun DockAreaScope.DragOverlayLayer(modifier: Modifier) {
 
         // Ghost card following the pointer (suppressed when the platform shows its own).
         if (state.dragController.dragListener?.showsOwnPreview != true) {
-            val local = session.screenPosition.let {
-                state.dragController.window(windowId)?.fromScreen?.invoke(it) ?: it
-            } - rootOffset
+            val local = state.dragController.fromScreen(windowId, session.screenPosition) - rootOffset
             val spec = state.registry[session.payload.primary]
             Box(
                 Modifier.offset {
