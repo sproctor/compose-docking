@@ -1,0 +1,27 @@
+public final class com/seanproctor/docking/material3/ComposableSingletons$Material3DockingRendererKt {
+	public static final field INSTANCE Lcom/seanproctor/docking/material3/ComposableSingletons$Material3DockingRendererKt;
+	public fun <init> ()V
+	public final fun getLambda$-1868334699$docking_material3 ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$827629128$docking_material3 ()Lkotlin/jvm/functions/Function3;
+}
+
+public final class com/seanproctor/docking/material3/Material3DockingKt {
+	public static final fun Material3Docking (Lcom/seanproctor/docking/spi/DockingTheme;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
+	public static final fun dockingThemeFromMaterial (Landroidx/compose/runtime/Composer;I)Lcom/seanproctor/docking/spi/DockingTheme;
+}
+
+public final class com/seanproctor/docking/material3/Material3DockingRenderer : com/seanproctor/docking/spi/DockingRenderer {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/material3/Material3DockingRenderer;
+	public fun AutoHideButton (Lcom/seanproctor/docking/spi/AutoHideButtonModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun DockableHeader (Lcom/seanproctor/docking/spi/HeaderModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun DockingHandle (Lcom/seanproctor/docking/spi/HandleModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun DragPreview (Ljava/lang/String;Landroidx/compose/ui/graphics/painter/Painter;Landroidx/compose/runtime/Composer;I)V
+	public fun DropOverlay (Lcom/seanproctor/docking/spi/DropOverlayModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun EmptyRootPlaceholder (Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun MenuHost (Ljava/util/List;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
+	public fun MissingDockable-XtkTFH4 (Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun SplitDivider (Lcom/seanproctor/docking/spi/DividerModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun TabStrip (Lcom/seanproctor/docking/spi/TabStripModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+}
+
