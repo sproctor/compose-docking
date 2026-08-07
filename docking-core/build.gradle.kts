@@ -10,6 +10,7 @@ kotlin {
             api(compose.runtime)
             api(compose.foundation)
             api(compose.ui)
+            implementation(compose.animation)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
         }
@@ -19,6 +20,10 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(compose.desktop.common)
+        }
+        jvmTest.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(compose.desktop.uiTestJUnit4)
         }
     }
 }

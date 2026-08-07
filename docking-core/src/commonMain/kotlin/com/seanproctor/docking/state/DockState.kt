@@ -75,6 +75,9 @@ public class DockState(
         com.seanproctor.docking.persistence.NamedLayouts(this)
     }
 
+    /** Cross-window rememberSaveable bridge for dockable content. */
+    internal val contentStateHolder: DockableSaveableStateHolder = DockableSaveableStateHolder()
+
     // ----- Transient UI state (never persisted) -----
 
     /** The dockable with input focus, for the active highlighter. Set by focus/press listeners. */
