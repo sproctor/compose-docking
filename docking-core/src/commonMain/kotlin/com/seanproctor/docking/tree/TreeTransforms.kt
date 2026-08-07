@@ -258,6 +258,27 @@ internal fun replaceNode(root: DockNode, nodeId: NodeId, replacement: DockNode):
     }
 }
 
+/**
+ * Inserts [dockableId] as a new tab at [index] of the tab group [tabsNodeId], selecting
+ * it. Returns `null` when the group no longer exists.
+ */
+internal fun TreeContext.insertTabAt(
+    root: DockNode,
+    tabsNodeId: NodeId,
+    dockableId: DockableId,
+    index: Int,
+): DockNode? {
+    var found = false
+    val result = transformTabs(root, tabsNodeId) { tabs ->
+        found = true
+        val clamped = index.coerceIn(0, tabs.tabs.size)
+        val newTabs = tabs.tabs.toMutableList()
+        newTabs.add(clamped, DockNode.Leaf(ids.next(), dockableId))
+        tabs.copy(tabs = newTabs, selectedIndex = clamped)
+    }
+    return if (found) result else null
+}
+
 /** Selects tab [index] of the tab group [tabsNodeId]. No-op if not found or out of range. */
 internal fun selectTab(root: DockNode, tabsNodeId: NodeId, index: Int): DockNode =
     transformTabs(root, tabsNodeId) { tabs ->

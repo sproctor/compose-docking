@@ -49,8 +49,7 @@ public object DebugDockingRenderer : DockingRenderer {
         Row(
             modifier = modifier
                 .height(28.dp)
-                .background(theme.toolbarBackground)
-                .then(model.gutterDragModifier),
+                .background(theme.toolbarBackground),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             model.tabs.forEachIndexed { index, tab ->
@@ -76,7 +75,7 @@ public object DebugDockingRenderer : DockingRenderer {
                 }
             }
             if (model.dropInsertionIndex == model.tabs.size) TabCaret()
-            Box(Modifier.weight(1f))
+            Box(Modifier.weight(1f).fillMaxHeight().then(model.gutterDragModifier))
             if (model.trailingMenuItems.isNotEmpty()) {
                 MenuHost(model.trailingMenuItems) { open ->
                     BasicText(

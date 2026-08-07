@@ -66,11 +66,17 @@ public fun DockArea(
 ) {
     val window = state.layout.window(windowId) ?: return
     val scope = remember(state, windowId) { DockAreaScope(state, windowId) }
+    scope.density = androidx.compose.ui.platform.LocalDensity.current.density
     val renderer = LocalDockingRenderer.current
+    DisposableEffect(scope) {
+        state.dragController.registerWindow(windowId, scope)
+        onDispose { state.dragController.unregisterWindow(windowId) }
+    }
     Box(
         modifier
             .onGloballyPositioned { scope.bounds.rootBounds = it.boundsInRoot() }
-            .autoHideDismissListener(scope),
+            .autoHideDismissListener(scope)
+            .dragSessionRootListener(scope),
     ) {
         Row(Modifier.fillMaxSize()) {
             scope.AutoHideToolbarStrip(window, com.seanproctor.docking.model.AutoHideSide.West)
@@ -90,6 +96,7 @@ public fun DockArea(
             scope.AutoHideToolbarStrip(window, com.seanproctor.docking.model.AutoHideSide.East)
         }
         scope.AutoHideSlideOutLayer(window, Modifier.fillMaxSize())
+        scope.DragOverlayLayer(Modifier.fillMaxSize())
     }
 }
 

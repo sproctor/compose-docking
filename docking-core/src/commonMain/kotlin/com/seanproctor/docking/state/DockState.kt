@@ -32,7 +32,9 @@ import com.seanproctor.docking.tree.isRegionAllowed
 import com.seanproctor.docking.tree.maximizeInLayout
 import com.seanproctor.docking.tree.moveTab
 import com.seanproctor.docking.tree.placementOf
+import com.seanproctor.docking.tree.insertTabAt
 import com.seanproctor.docking.tree.restoreMaximizeInLayout
+import com.seanproctor.docking.tree.restoredFromMaximize
 import com.seanproctor.docking.tree.selectTab
 import com.seanproctor.docking.tree.setSlideProportionInLayout
 import com.seanproctor.docking.tree.setSplitProportion
@@ -77,6 +79,11 @@ public class DockState(
 
     /** Cross-window rememberSaveable bridge for dockable content. */
     internal val contentStateHolder: DockableSaveableStateHolder = DockableSaveableStateHolder()
+
+    /** The drag-to-dock authority for this state. */
+    internal val dragController: com.seanproctor.docking.drag.DragController by lazy {
+        com.seanproctor.docking.drag.DragController(this)
+    }
 
     // ----- Transient UI state (never persisted) -----
 
@@ -366,6 +373,55 @@ public class DockState(
         layout = result.layout
         expandedAutoHide.remove(windowId)
         result.closedWindows.forEach { emit(DockingEvent.WindowClosed(it)) }
+    }
+
+    // ----- Internal operations for the drag controller -----
+
+    /** Undocks marking events as drag churn ([DockingEvent.Undocked.isTemporary]). */
+    internal fun undockTemporarily(dockableId: DockableId) {
+        if (!isOpen(dockableId)) return
+        val result = treeContext().undockFromLayout(layout, dockableId)
+        layout = result.layout
+        collapseExpanded(dockableId)
+        emit(DockingEvent.Undocked(dockableId, isTemporary = true))
+        result.closedWindows.forEach { emit(DockingEvent.WindowClosed(it)) }
+    }
+
+    /** Puts a currently-closed dockable straight into a window's auto-hide toolbar (pin-handle drop). */
+    internal fun autoHideInto(dockableId: DockableId, windowId: WindowId, side: AutoHideSide) {
+        if (isOpen(dockableId)) return
+        val window = layout.window(windowId) ?: return
+        val proportion = autoHideProportions[dockableId]
+            ?: com.seanproctor.docking.model.AutoHideEntry.DEFAULT_SLIDE_PROPORTION
+        layout = layout.replaceWindow(
+            window.copy(
+                autoHide = window.autoHide.with(
+                    side,
+                    window.autoHide[side] + com.seanproctor.docking.model.AutoHideEntry(dockableId, proportion),
+                ),
+            ),
+        )
+        emit(DockingEvent.AutoHideChanged(dockableId, enabled = true, side = side))
+    }
+
+    /** Docks a currently-closed dockable into a tab group at a specific index (strip drop). */
+    internal fun dockIntoTabsAt(
+        dockableId: DockableId,
+        windowId: WindowId,
+        tabsNodeId: NodeId,
+        index: Int,
+    ): Boolean {
+        val window = layout.window(windowId) ?: return false
+        val root = window.restoredFromMaximize().root ?: return false
+        val newRoot = treeContext().insertTabAt(root, tabsNodeId, dockableId, index) ?: return false
+        layout = layout.replaceWindow(window.restoredFromMaximize().copy(root = newRoot))
+        emit(DockingEvent.Docked(dockableId, windowId))
+        return true
+    }
+
+    /** Restores a pre-drag snapshot without emitting layout events (drag cancel). */
+    internal fun restoreSnapshot(snapshot: DockLayout) {
+        layout = snapshot
     }
 
     // ----- Internals -----

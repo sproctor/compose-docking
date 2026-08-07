@@ -2,8 +2,14 @@ package com.seanproctor.docking.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
+import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockableId
+import com.seanproctor.docking.model.NodeId
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.state.DockState
 
@@ -19,8 +25,14 @@ internal class DockAreaScope(
     val bounds = DockBoundsRegistry()
 
     /** Geometry for auto-hide outside-press dismissal (root coordinates). */
-    var slideOutPanelBounds: androidx.compose.ui.geometry.Rect? = null
-    val autoHideStripBounds = mutableMapOf<com.seanproctor.docking.model.AutoHideSide, androidx.compose.ui.geometry.Rect>()
+    var slideOutPanelBounds: Rect? = null
+    val autoHideStripBounds = mutableMapOf<AutoHideSide, Rect>()
+
+    /** Density of this window's composition, for px-sized drag geometry. */
+    var density: Float = 1f
+
+    /** Live tab-reorder state (before a drag escalates to a full dock drag). */
+    var tabReorder: TabReorderState? by mutableStateOf(null)
 
     /**
      * One `movableContentOf` lambda per dockable. Invoking the same lambda from a new
@@ -45,4 +57,14 @@ internal class DockAreaScope(
         }
         content()
     }
+}
+
+/** A tab being reordered within its strip. */
+@Stable
+internal class TabReorderState(
+    val group: NodeId,
+    val dockable: DockableId,
+    val fromIndex: Int,
+) {
+    var offsetX: Float by mutableStateOf(0f)
 }

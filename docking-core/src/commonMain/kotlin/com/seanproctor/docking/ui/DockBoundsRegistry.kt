@@ -53,6 +53,18 @@ public class DockBoundsRegistry internal constructor() {
 
     internal fun boundsOfNode(id: NodeId): Rect? = nodeBounds[id]
 
+    /**
+     * The index a tab dragged from [fromIndex] should move to for a pointer at [x],
+     * computed over the *other* tabs (the dragged tab's own rect follows the pointer and
+     * would corrupt the count).
+     */
+    internal fun reorderTargetIndex(nodeId: NodeId, fromIndex: Int, x: Float): Int {
+        val others = tabRects[nodeId].orEmpty().entries
+            .filter { it.key != fromIndex }
+            .sortedBy { it.key }
+        return others.count { x > it.value.center.x }
+    }
+
     /** The tab strip containing [position], with the insertion index at that x. */
     internal fun tabStripAt(position: Offset): TabStripHit? {
         val (nodeId, _) = tabStripRects.entries
