@@ -31,6 +31,9 @@ internal class DockAreaScope(
     /** Density of this window's composition, for px-sized drag geometry. */
     var density: Float = 1f
 
+    /** Window-wide double-click sequencing for headers and tabs. */
+    val clicks = ClickTracker()
+
     /** Live tab-reorder state (before a drag escalates to a full dock drag). */
     var tabReorder: TabReorderState? by mutableStateOf(null)
 

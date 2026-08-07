@@ -38,18 +38,49 @@ private fun DockState.toggleMaximizeIfAllowed(id: DockableId) {
 }
 
 /**
- * Shared press gesture: [onPress] on down, [onDoubleClick] on quick second click,
- * [onDragPastSlop] once movement exceeds slop (return true to hand the gesture to the
- * drag session), [onMove]/[onRelease] while an in-gesture mode (tab reorder) is active.
+ * Per-window double-click detection. Tracking the last-clicked target globally (rather
+ * than per gesture handler) is what makes a double click require two *consecutive*
+ * clicks on the same element: rapidly clicking tab A, tab B, tab A again must select
+ * tabs, not maximize A — B's click breaks A's sequence.
+ */
+internal class ClickTracker {
+    private var lastTarget: Any? = null
+    private var lastUpMillis = Long.MIN_VALUE
+
+    /** Records a completed click; returns true when it completes a double click on [target]. */
+    fun registerClick(target: Any, upMillis: Long, timeoutMillis: Long): Boolean {
+        val isDouble = target == lastTarget && upMillis - lastUpMillis < timeoutMillis
+        if (isDouble) {
+            reset()
+        } else {
+            lastTarget = target
+            lastUpMillis = upMillis
+        }
+        return isDouble
+    }
+
+    /** Any non-click interaction (drag, press elsewhere) breaks a pending sequence. */
+    fun reset() {
+        lastTarget = null
+        lastUpMillis = Long.MIN_VALUE
+    }
+}
+
+/**
+ * Shared press gesture: [onPress] on down, [onDoubleClick] on the second consecutive
+ * click on [clickTarget] (tracked window-wide via [clicks]), [onDragPastSlop] once
+ * movement exceeds slop (return true to hand the gesture to the drag session),
+ * [onMove]/[onRelease] while an in-gesture mode (tab reorder) is active.
  */
 private suspend fun PointerInputScope.dockPointerHandler(
+    clicks: ClickTracker,
+    clickTarget: Any,
     onPress: () -> Unit,
     onDoubleClick: () -> Unit,
     onDragPastSlop: (down: Offset, current: PointerInputChange) -> Boolean,
     onMove: (current: PointerInputChange) -> Unit = {},
     onRelease: (current: PointerInputChange?) -> Unit = {},
 ) {
-    var lastUpMillis = Long.MIN_VALUE
     awaitEachGesture {
         val down = awaitFirstDown()
         onPress()
@@ -65,12 +96,12 @@ private suspend fun PointerInputScope.dockPointerHandler(
                     handedOff -> Unit // session's root listener owns the release
                     dragging -> onRelease(change)
                     else -> {
-                        if (change.uptimeMillis - lastUpMillis < viewConfiguration.doubleTapTimeoutMillis) {
-                            lastUpMillis = Long.MIN_VALUE
-                            onDoubleClick()
-                        } else {
-                            lastUpMillis = change.uptimeMillis
-                        }
+                        val isDouble = clicks.registerClick(
+                            clickTarget,
+                            change.uptimeMillis,
+                            viewConfiguration.doubleTapTimeoutMillis,
+                        )
+                        if (isDouble) onDoubleClick()
                     }
                 }
                 break
@@ -79,6 +110,7 @@ private suspend fun PointerInputScope.dockPointerHandler(
             if (!dragging) {
                 if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
                     dragging = true
+                    clicks.reset() // a drag is not a click
                     handedOff = onDragPastSlop(down.position, change)
                 }
             } else {
@@ -98,6 +130,8 @@ internal fun DockAreaScope.headerGestureModifier(id: DockableId): Modifier {
         .onGloballyPositioned { coords.value = it }
         .pointerInput(id) {
             dockPointerHandler(
+                clicks = clicks,
+                clickTarget = "header:" + id.value,
                 onPress = { state.activeDockable = id },
                 onDoubleClick = { state.toggleMaximizeIfAllowed(id) },
                 onDragPastSlop = { _, change ->
@@ -144,6 +178,8 @@ internal fun DockAreaScope.tabGestureModifier(
 
             var escalated = false
             dockPointerHandler(
+                clicks = clicks,
+                clickTarget = "tab:" + id.value,
                 onPress = {
                     state.selectTab(nodeId, currentIndex)
                     state.activeDockable = id
@@ -201,6 +237,8 @@ internal fun DockAreaScope.gutterGestureModifier(node: DockNode.Tabs): Modifier 
         .onGloballyPositioned { coords.value = it }
         .pointerInput(nodeId) {
             dockPointerHandler(
+                clicks = clicks,
+                clickTarget = "gutter:" + nodeId.value,
                 onPress = {},
                 onDoubleClick = {},
                 onDragPastSlop = { _, change ->

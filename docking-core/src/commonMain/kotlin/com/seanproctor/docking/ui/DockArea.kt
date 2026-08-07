@@ -173,6 +173,7 @@ internal fun DockAreaScope.DockableContentBox(id: DockableId, modifier: Modifier
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         if (event.type == PointerEventType.Press) {
                             state.activeDockable = id
+                            clicks.reset() // content press breaks header/tab double-click sequences
                         }
                     }
                 }
