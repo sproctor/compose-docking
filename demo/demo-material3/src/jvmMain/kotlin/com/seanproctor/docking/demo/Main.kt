@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.seanproctor.docking.desktop.FloatingDockWindows
+import com.seanproctor.docking.material3.Material3Docking
 import com.seanproctor.docking.desktop.registerDockingWindow
 import com.seanproctor.docking.layout.dockLayout
 import com.seanproctor.docking.model.AutoHideSide
@@ -69,11 +70,15 @@ fun main() = application {
 
     Window(onCloseRequest = ::exitApplication, title = "Compose Docking Demo") {
         MaterialTheme {
-            registerDockingWindow(state)
-            DockArea(state, modifier = Modifier.fillMaxSize())
+            Material3Docking {
+                registerDockingWindow(state)
+                DockArea(state, modifier = Modifier.fillMaxSize())
+            }
         }
     }
     MaterialTheme {
-        FloatingDockWindows(state)
+        Material3Docking {
+            FloatingDockWindows(state)
+        }
     }
 }
