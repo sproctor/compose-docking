@@ -13,20 +13,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Monitor
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,68 +22,56 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.DockingStyle
 import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.state.DockStateBuilder
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Checkbox
+import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.RadioButton
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
 
-// The Material 3 face of the ModernDocking basic demo. Panel identities, the default
-// layout, and the panels' behavior live in demo-shared's DemoModel.kt.
+// The Jewel face of the ModernDocking basic demo. Panel identities, the default layout,
+// and the panels' behavior live in demo-shared's DemoModel.kt.
 
-// ---------- Themes (the ModernDocking demo's FlatLaf switcher) ----------
+// ---------- Themes (the ModernDocking demo's LaF switcher, IntelliJ-flavored) ----------
 
-val demoThemeNames: List<String> = listOf("Light", "Dark", "GitHub Dark", "Solarized Dark")
+val demoThemeNames: List<String> = listOf("IntUi Light", "IntUi Dark")
 
-var demoTheme: String by mutableStateOf("Light")
-
-private val GitHubDarkColors = darkColorScheme(
-    primary = Color(0xFF58A6FF),
-    background = Color(0xFF0D1117),
-    surface = Color(0xFF161B22),
-    surfaceVariant = Color(0xFF21262D),
-    onBackground = Color(0xFFC9D1D9),
-    onSurface = Color(0xFFC9D1D9),
-)
-
-private val SolarizedDarkColors = darkColorScheme(
-    primary = Color(0xFF268BD2),
-    secondary = Color(0xFF2AA198),
-    background = Color(0xFF002B36),
-    surface = Color(0xFF073642),
-    surfaceVariant = Color(0xFF0A4552),
-    onBackground = Color(0xFF93A1A1),
-    onSurface = Color(0xFF93A1A1),
-)
+var demoTheme: String by mutableStateOf("IntUi Dark")
 
 @Composable
 fun DemoTheme(content: @Composable () -> Unit) {
-    val colors = when (demoTheme) {
-        "Dark" -> darkColorScheme()
-        "GitHub Dark" -> GitHubDarkColors
-        "Solarized Dark" -> SolarizedDarkColors
-        else -> lightColorScheme()
-    }
-    MaterialTheme(colorScheme = colors, content = content)
+    IntUiTheme(isDark = demoTheme == "IntUi Dark", content = content)
 }
 
-/** Compose once per application (inside the theme): renders pending demo dialogs. */
+/**
+ * Jewel has no text-field-with-String overload, so bridge the shared `String` state to
+ * `TextFieldValue` and keep the caret while letting external writes (Save's reparse) win.
+ */
 @Composable
-fun DemoDialogs() {
-    closeConfirmation.message?.let { message ->
-        AlertDialog(
-            onDismissRequest = { closeConfirmation.answer(false) },
-            title = { Text("Close Panel") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { closeConfirmation.answer(true) }) { Text("Yes") }
-            },
-            dismissButton = {
-                TextButton(onClick = { closeConfirmation.answer(false) }) { Text("No") }
-            },
-        )
-    }
+private fun StringTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
+    if (fieldValue.text != value) fieldValue = TextFieldValue(value)
+    TextField(
+        value = fieldValue,
+        onValueChange = {
+            fieldValue = it
+            onValueChange(it.text)
+        },
+        modifier = modifier,
+    )
 }
 
 // ---------- Panel content ----------
@@ -120,11 +94,10 @@ fun SimplePanelContent(id: String) {
                             DemoControl.Label -> Text("Label Here")
                             DemoControl.TextField -> {
                                 var text by rememberSaveable { mutableStateOf("") }
-                                OutlinedTextField(
+                                StringTextField(
                                     value = text,
                                     onValueChange = { text = it },
                                     modifier = Modifier.width(120.dp),
-                                    singleLine = true,
                                 )
                             }
                             DemoControl.Checkbox -> {
@@ -150,7 +123,7 @@ private fun OutputPanelContent() {
             Text("one", Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 4.dp))
             Text("two", Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 4.dp))
         }
-        HorizontalDivider()
+        Divider(Orientation.Horizontal)
     }
 }
 
@@ -162,18 +135,17 @@ private fun PropertiesDemoContent() {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         for (field in propsDemo.fields) {
-            var text by propsDemo.texts.getValue(field)
+            val state = propsDemo.texts.getValue(field)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("$field:", Modifier.width(72.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { if (propsDemo.acceptsInput(field, it)) text = it },
+                StringTextField(
+                    value = state.value,
+                    onValueChange = { if (propsDemo.acceptsInput(field, it)) state.value = it },
                     modifier = Modifier.width(160.dp),
-                    singleLine = true,
                 )
             }
         }
-        Button(onClick = { propsDemo.save() }) { Text("Save") }
+        DefaultButton(onClick = { propsDemo.save() }) { Text("Save") }
     }
 }
 
@@ -187,18 +159,13 @@ private fun ThemesPanelContent() {
                 modifier = Modifier.fillMaxWidth()
                     .then(
                         if (selected) {
-                            Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                            Modifier.background(JewelTheme.globalColors.outlines.focused)
                         } else {
                             Modifier
                         },
                     )
                     .clickable { demoTheme = name }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    LocalContentColor.current
-                },
             )
         }
     }
@@ -211,8 +178,8 @@ private fun ScrollingWithToolbarContent() {
             modifier = Modifier.fillMaxWidth().padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Button(onClick = {}) { Text("Add") }
-            Button(onClick = {}) { Text("Remove") }
+            DefaultButton(onClick = {}) { Text("Add") }
+            DefaultButton(onClick = {}) { Text("Remove") }
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
             repeat(30) { Text("label $it", Modifier.padding(horizontal = 8.dp)) }
@@ -262,7 +229,6 @@ fun DockStateBuilder.demoDockables() {
             dockingStyle = DockingStyle.Vertical,
             autoHideStyle = DockingStyle.Vertical,
         ),
-        icon = { rememberVectorPainter(Icons.Filled.Monitor) },
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
         Box(Modifier.fillMaxSize())
@@ -277,7 +243,6 @@ fun DockStateBuilder.demoDockables() {
             dockingStyle = DockingStyle.Horizontal,
             autoHideStyle = DockingStyle.Horizontal,
         ),
-        icon = { rememberVectorPainter(Icons.Filled.Monitor) },
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
         OutputPanelContent()

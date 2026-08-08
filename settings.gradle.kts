@@ -34,5 +34,6 @@ rootProject.name = "compose-docking"
 include(":docking-core")
 include(":docking-material3")
 include(":docking-jewel")
+include(":demo:demo-shared")
 include(":demo:demo-material3")
 include(":demo:demo-jewel")

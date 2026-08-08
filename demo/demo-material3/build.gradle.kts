@@ -16,6 +16,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":docking-core"))
             implementation(project(":docking-material3"))
+            implementation(project(":demo:demo-shared"))
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
         }

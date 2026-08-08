@@ -1,7 +1,7 @@
 package com.seanproctor.docking.demo
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeViewport
@@ -13,9 +13,12 @@ import com.seanproctor.docking.ui.DockArea
 fun main() {
     ComposeViewport(viewportContainerId = "compose") {
         val state = rememberDockState(initialLayout = ::demoLayout) { demoDockables() }
-        MaterialTheme {
+        DemoTheme {
             Material3Docking {
-                DockArea(state, modifier = Modifier.fillMaxSize())
+                Surface(Modifier.fillMaxSize()) {
+                    DockArea(state, modifier = Modifier.fillMaxSize())
+                }
+                DemoDialogs()
             }
         }
     }
