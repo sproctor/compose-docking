@@ -283,6 +283,8 @@ internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel {
         maximizable = spec.options.maximizable,
         dragModifier = headerGestureModifier(spec.id),
         menuItems = buildDockableMenuItems(state, spec.id),
+        background = spec.headerBackground?.invoke(),
+        foreground = spec.headerForeground?.invoke(),
         onClose = if (spec.options.closable) {
             { coroutineScope.launch { state.close(spec.id) } }
         } else {

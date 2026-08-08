@@ -33,10 +33,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockableId
@@ -69,43 +72,72 @@ public object Material3DockingRenderer : DockingRenderer {
             modifier = modifier.height(32.dp).background(theme.toolbarBackground),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                model.tabs.forEachIndexed { index, tab ->
-                    if (model.dropInsertionIndex == index) TabCaret()
-                    val interaction = remember { MutableInteractionSource() }
-                    val hovered by interaction.collectIsHoveredAsState()
+            TabsThenGutter(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                tabs = {
                     Row(
-                        modifier = Modifier
-                            .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
-                            .then(tab.dragModifier)
-                            .hoverable(interaction)
-                            .fillMaxHeight()
-                            .background(if (tab.isSelected) colors.surface else theme.toolbarBackground)
-                            .drawSelectionUnderline(tab.isSelected, colors.primary)
-                            .padding(horizontal = 12.dp),
+                        Modifier.horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            tab.title,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (tab.isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (tab.isSelected) colors.onSurface else colors.onSurfaceVariant,
-                        )
-                        if (tab.onClose != null && (tab.isSelected || hovered)) {
-                            GlyphButton("×", onClick = tab.onClose!!)
+                        model.tabs.forEachIndexed { index, tab ->
+                            if (model.dropInsertionIndex == index) TabCaret()
+                            val interaction = remember { MutableInteractionSource() }
+                            val hovered by interaction.collectIsHoveredAsState()
+                            Row(
+                                modifier = Modifier
+                                    .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
+                                    .then(tab.dragModifier)
+                                    .hoverable(interaction)
+                                    .fillMaxHeight()
+                                    .background(if (tab.isSelected) colors.surface else theme.toolbarBackground)
+                                    .drawSelectionUnderline(tab.isSelected, colors.primary)
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    tab.title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (tab.isSelected) FontWeight.Medium else FontWeight.Normal,
+                                    color = if (tab.isSelected) colors.onSurface else colors.onSurfaceVariant,
+                                )
+                                if (tab.onClose != null && (tab.isSelected || hovered)) {
+                                    GlyphButton("×", onClick = tab.onClose!!)
+                                }
+                            }
                         }
+                        if (model.dropInsertionIndex == model.tabs.size) TabCaret()
                     }
-                }
-                if (model.dropInsertionIndex == model.tabs.size) TabCaret()
-            }
-            Box(Modifier.weight(1f).fillMaxHeight().then(model.gutterDragModifier))
+                },
+                gutter = { Box(Modifier.fillMaxHeight().then(model.gutterDragModifier)) },
+            )
             if (model.trailingMenuItems.isNotEmpty()) {
                 MenuHost(model.trailingMenuItems) { open ->
                     GlyphButton("⋮", onClick = open)
                 }
+            }
+        }
+    }
+
+    /**
+     * Tabs at their natural width (scrolling only when they exceed the whole strip),
+     * with the gutter given exactly the leftover width. A plain `Row` with weights
+     * would clip the tabs to a fraction of the strip; layering the gutter under the
+     * tabs would make tab drags also start gutter (whole-group) drags.
+     */
+    @Composable
+    private fun TabsThenGutter(
+        modifier: Modifier,
+        tabs: @Composable () -> Unit,
+        gutter: @Composable () -> Unit,
+    ) {
+        Layout(contents = listOf(tabs, gutter), modifier = modifier) { measurables, constraints ->
+            val tabsPlaceable = measurables[0].first().measure(constraints.copy(minWidth = 0))
+            val gutterWidth = (constraints.maxWidth - tabsPlaceable.width).coerceAtLeast(0)
+            val gutterPlaceable = measurables[1].first()
+                .measure(Constraints.fixed(gutterWidth, constraints.maxHeight))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                tabsPlaceable.placeRelative(0, 0)
+                gutterPlaceable.placeRelative(tabsPlaceable.width, 0)
             }
         }
     }
@@ -124,7 +156,9 @@ public object Material3DockingRenderer : DockingRenderer {
     override fun DockableHeader(model: HeaderModel, modifier: Modifier) {
         val colors = MaterialTheme.colorScheme
         val theme = LocalDockingTheme.current
-        Surface(color = theme.headerBackground, modifier = modifier) {
+        val foreground = model.foreground
+            ?: if (model.isActive) colors.onSurface else colors.onSurfaceVariant
+        Surface(color = model.background ?: theme.headerBackground, modifier = modifier) {
             Row(
                 modifier = Modifier.height(30.dp).then(model.dragModifier),
                 verticalAlignment = Alignment.CenterVertically,
@@ -132,7 +166,7 @@ public object Material3DockingRenderer : DockingRenderer {
                 Text(
                     model.title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (model.isActive) colors.onSurface else colors.onSurfaceVariant,
+                    color = foreground,
                     modifier = Modifier.padding(horizontal = 10.dp).weight(1f),
                     maxLines = 1,
                 )
@@ -140,22 +174,28 @@ public object Material3DockingRenderer : DockingRenderer {
                     Text(
                         "⛶",
                         style = MaterialTheme.typography.labelLarge,
-                        color = colors.primary,
+                        color = model.foreground ?: colors.primary,
                         modifier = Modifier.padding(end = 2.dp),
                     )
                 }
                 if (model.menuItems.isNotEmpty()) {
-                    MenuHost(model.menuItems) { open -> GlyphButton("⋮", onClick = open) }
+                    MenuHost(model.menuItems) { open ->
+                        GlyphButton("⋮", color = foreground, onClick = open)
+                    }
                 }
                 if (model.onClose != null) {
-                    GlyphButton("×", onClick = model.onClose!!)
+                    GlyphButton("×", color = foreground, onClick = model.onClose!!)
                 }
             }
         }
     }
 
     @Composable
-    private fun GlyphButton(glyph: String, onClick: () -> Unit) {
+    private fun GlyphButton(
+        glyph: String,
+        color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+        onClick: () -> Unit,
+    ) {
         val interaction = remember { MutableInteractionSource() }
         val hovered by interaction.collectIsHoveredAsState()
         Box(
@@ -164,21 +204,13 @@ public object Material3DockingRenderer : DockingRenderer {
                 .size(22.dp)
                 .hoverable(interaction)
                 .background(
-                    if (hovered) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                    } else {
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0f)
-                    },
+                    if (hovered) color.copy(alpha = 0.12f) else Color.Transparent,
                     MaterialTheme.shapes.extraSmall,
                 )
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                glyph,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(glyph, style = MaterialTheme.typography.labelLarge, color = color)
         }
     }
 

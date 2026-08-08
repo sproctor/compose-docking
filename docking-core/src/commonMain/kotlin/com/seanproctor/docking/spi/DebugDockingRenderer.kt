@@ -101,23 +101,24 @@ public object DebugDockingRenderer : DockingRenderer {
     @Composable
     override fun DockableHeader(model: HeaderModel, modifier: Modifier) {
         val theme = LocalDockingTheme.current
+        val foreground = model.foreground ?: theme.headerForeground
         Row(
             modifier = modifier
                 .height(26.dp)
-                .background(theme.headerBackground)
+                .background(model.background ?: theme.headerBackground)
                 .then(model.dragModifier),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(
                 model.title + if (model.isMaximized) "  ⛶" else "",
-                style = textStyle(theme.headerForeground),
+                style = textStyle(foreground),
                 modifier = Modifier.padding(horizontal = 8.dp).weight(1f),
             )
             if (model.menuItems.isNotEmpty()) {
                 MenuHost(model.menuItems) { open ->
                     BasicText(
                         "⋮",
-                        style = textStyle(theme.headerForeground),
+                        style = textStyle(foreground),
                         modifier = Modifier.clickable(onClick = open).padding(6.dp),
                     )
                 }
@@ -125,7 +126,7 @@ public object DebugDockingRenderer : DockingRenderer {
             if (model.onClose != null) {
                 BasicText(
                     "×",
-                    style = textStyle(theme.headerForeground),
+                    style = textStyle(foreground),
                     modifier = Modifier.clickable { model.onClose.invoke() }.padding(6.dp),
                 )
             }

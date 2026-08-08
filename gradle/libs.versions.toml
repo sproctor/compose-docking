@@ -1,12 +1,11 @@
 [versions]
-kotlin = "2.3.20"
+kotlin = "2.4.10"
 compose-multiplatform = "1.11.0"
-agp = "8.13.0"
-coroutines = "1.10.2"
-serialization = "1.9.0"
+agp = "9.1.1"
+coroutines = "1.11.0"
+serialization = "1.11.0"
 jewel = "0.39.1-262.9437.29"
 vanniktech-publish = "0.37.0"
-binary-compat = "0.18.1"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -29,6 +28,5 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-androidLibrary = { id = "com.android.library", version.ref = "agp" }
+androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-publish" }
-binaryCompat = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binary-compat" }

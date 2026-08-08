@@ -15,8 +15,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
-      - name: API check and JVM tests
-        run: ./gradlew apiCheck :docking-core:jvmTest :docking-material3:assemble :docking-jewel:assemble
+      - name: ABI check and JVM tests
+        run: ./gradlew checkKotlinAbi :docking-core:jvmTest :docking-material3:assemble :docking-jewel:assemble
 
   full-build:
     # macOS compiles/links the iOS klibs as well.

@@ -3,6 +3,7 @@ package com.seanproctor.docking.state
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockableId
@@ -27,6 +28,13 @@ public class DockableSpec(
     public val title: @Composable () -> String,
     public val icon: (@Composable () -> Painter)? = null,
     public val tooltip: (@Composable () -> String)? = null,
+    /**
+     * Overrides the title bar's colors for this dockable (ModernDocking's
+     * `setBackgroundOverride`/`setForegroundOverride`). Null keeps the renderer's theme
+     * colors; [headerForeground] covers the title text and the header's buttons.
+     */
+    public val headerBackground: (@Composable () -> Color)? = null,
+    public val headerForeground: (@Composable () -> Color)? = null,
     /**
      * Close veto (ModernDocking's `requestClose`). May suspend — e.g. to show a
      * confirmation dialog. Return false to keep the dockable open.

@@ -2,6 +2,7 @@ package com.seanproctor.docking.state
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockableId
@@ -22,6 +23,8 @@ public class DockStateBuilder internal constructor(
         options: DockableOptions = DockableOptions(),
         icon: (@Composable () -> Painter)? = null,
         tooltip: (@Composable () -> String)? = null,
+        headerBackground: (@Composable () -> Color)? = null,
+        headerForeground: (@Composable () -> Color)? = null,
         canClose: suspend () -> Boolean = { true },
         saveState: (() -> JsonElement)? = null,
         restoreState: ((JsonElement) -> Unit)? = null,
@@ -34,6 +37,8 @@ public class DockStateBuilder internal constructor(
                 title = title,
                 icon = icon,
                 tooltip = tooltip,
+                headerBackground = headerBackground,
+                headerForeground = headerForeground,
                 canClose = canClose,
                 saveState = saveState,
                 restoreState = restoreState,

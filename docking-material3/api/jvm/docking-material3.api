@@ -1,8 +1,7 @@
 public final class com/seanproctor/docking/material3/ComposableSingletons$Material3DockingRendererKt {
 	public static final field INSTANCE Lcom/seanproctor/docking/material3/ComposableSingletons$Material3DockingRendererKt;
 	public fun <init> ()V
-	public final fun getLambda$-1868334699$docking_material3 ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$827629128$docking_material3 ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$827629128$com_seanproctor_docking_material3 ()Lkotlin/jvm/functions/Function3;
 }
 
 public final class com/seanproctor/docking/material3/Material3DockingKt {

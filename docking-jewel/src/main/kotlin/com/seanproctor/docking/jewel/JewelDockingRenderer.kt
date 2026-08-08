@@ -30,10 +30,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -81,53 +84,82 @@ public object JewelDockingRenderer : DockingRenderer {
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                model.tabs.forEachIndexed { index, tab ->
-                    if (model.dropInsertionIndex == index) TabCaret()
-                    val interaction = remember { MutableInteractionSource() }
-                    val hovered by interaction.collectIsHoveredAsState()
+            TabsThenGutter(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                tabs = {
                     Row(
-                        modifier = Modifier
-                            .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
-                            .then(tab.dragModifier)
-                            .hoverable(interaction)
-                            .fillMaxHeight()
-                            .background(
-                                when {
-                                    tab.isSelected -> theme.headerBackground
-                                    hovered -> theme.headerForeground.copy(alpha = 0.06f)
-                                    else -> theme.toolbarBackground
-                                },
-                            )
-                            .drawBehind {
-                                if (tab.isSelected) {
-                                    drawRect(
-                                        underline,
-                                        topLeft = Offset(0f, size.height - 3.dp.toPx()),
-                                        size = Size(size.width, 3.dp.toPx()),
-                                    )
-                                }
-                            }
-                            .padding(horizontal = 10.dp),
+                        Modifier.horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            tab.title,
-                            color = theme.headerForeground.copy(alpha = if (tab.isSelected) 1f else 0.75f),
-                        )
-                        if (tab.onClose != null && (tab.isSelected || hovered)) {
-                            SquareButton("×", onClick = tab.onClose!!)
+                        model.tabs.forEachIndexed { index, tab ->
+                            if (model.dropInsertionIndex == index) TabCaret()
+                            val interaction = remember { MutableInteractionSource() }
+                            val hovered by interaction.collectIsHoveredAsState()
+                            Row(
+                                modifier = Modifier
+                                    .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
+                                    .then(tab.dragModifier)
+                                    .hoverable(interaction)
+                                    .fillMaxHeight()
+                                    .background(
+                                        when {
+                                            tab.isSelected -> theme.headerBackground
+                                            hovered -> theme.headerForeground.copy(alpha = 0.06f)
+                                            else -> theme.toolbarBackground
+                                        },
+                                    )
+                                    .drawBehind {
+                                        if (tab.isSelected) {
+                                            drawRect(
+                                                underline,
+                                                topLeft = Offset(0f, size.height - 3.dp.toPx()),
+                                                size = Size(size.width, 3.dp.toPx()),
+                                            )
+                                        }
+                                    }
+                                    .padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    tab.title,
+                                    color = theme.headerForeground.copy(alpha = if (tab.isSelected) 1f else 0.75f),
+                                )
+                                if (tab.onClose != null && (tab.isSelected || hovered)) {
+                                    SquareButton("×", onClick = tab.onClose!!)
+                                }
+                            }
                         }
+                        if (model.dropInsertionIndex == model.tabs.size) TabCaret()
                     }
-                }
-                if (model.dropInsertionIndex == model.tabs.size) TabCaret()
-            }
-            Box(Modifier.weight(1f).fillMaxHeight().then(model.gutterDragModifier))
+                },
+                gutter = { Box(Modifier.fillMaxHeight().then(model.gutterDragModifier)) },
+            )
             if (model.trailingMenuItems.isNotEmpty()) {
                 MenuHost(model.trailingMenuItems) { open -> SquareButton("⋮", onClick = open) }
+            }
+        }
+    }
+
+    /**
+     * Tabs at their natural width (scrolling only when they exceed the whole strip),
+     * with the gutter given exactly the leftover width. A plain `Row` with weights
+     * would clip the tabs to a fraction of the strip; layering the gutter under the
+     * tabs would make tab drags also start gutter (whole-group) drags.
+     */
+    @Composable
+    private fun TabsThenGutter(
+        modifier: Modifier,
+        tabs: @Composable () -> Unit,
+        gutter: @Composable () -> Unit,
+    ) {
+        Layout(contents = listOf(tabs, gutter), modifier = modifier) { measurables, constraints ->
+            val tabsPlaceable = measurables[0].first().measure(constraints.copy(minWidth = 0))
+            val gutterWidth = (constraints.maxWidth - tabsPlaceable.width).coerceAtLeast(0)
+            val gutterPlaceable = measurables[1].first()
+                .measure(Constraints.fixed(gutterWidth, constraints.maxHeight))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                tabsPlaceable.placeRelative(0, 0)
+                gutterPlaceable.placeRelative(tabsPlaceable.width, 0)
             }
         }
     }
@@ -145,10 +177,11 @@ public object JewelDockingRenderer : DockingRenderer {
     @Composable
     override fun DockableHeader(model: HeaderModel, modifier: Modifier) {
         val theme = LocalDockingTheme.current
+        val foreground = model.foreground ?: theme.headerForeground
         Row(
             modifier = modifier
                 .height(28.dp)
-                .background(theme.headerBackground)
+                .background(model.background ?: theme.headerBackground)
                 .drawBehind {
                     drawLine(
                         theme.handleOutline,
@@ -169,27 +202,36 @@ public object JewelDockingRenderer : DockingRenderer {
         ) {
             Text(
                 model.title,
-                color = theme.headerForeground,
+                color = foreground,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 8.dp).weight(1f),
                 maxLines = 1,
             )
             if (model.isMaximized) {
-                Text("⛶", color = theme.activeHighlightBorder, modifier = Modifier.padding(end = 2.dp))
+                Text(
+                    "⛶",
+                    color = model.foreground ?: theme.activeHighlightBorder,
+                    modifier = Modifier.padding(end = 2.dp),
+                )
             }
             if (model.menuItems.isNotEmpty()) {
-                MenuHost(model.menuItems) { open -> SquareButton("⋮", onClick = open) }
+                MenuHost(model.menuItems) { open ->
+                    SquareButton("⋮", color = foreground, onClick = open)
+                }
             }
             if (model.onClose != null) {
-                SquareButton("×", onClick = model.onClose!!)
+                SquareButton("×", color = foreground, onClick = model.onClose!!)
             }
         }
     }
 
     /** The 16px hover-square icon button IntelliJ uses in tool-window headers. */
     @Composable
-    private fun SquareButton(glyph: String, onClick: () -> Unit) {
-        val theme = LocalDockingTheme.current
+    private fun SquareButton(
+        glyph: String,
+        color: Color = LocalDockingTheme.current.headerForeground,
+        onClick: () -> Unit,
+    ) {
         val interaction = remember { MutableInteractionSource() }
         val hovered by interaction.collectIsHoveredAsState()
         Box(
@@ -197,13 +239,11 @@ public object JewelDockingRenderer : DockingRenderer {
                 .padding(horizontal = 2.dp)
                 .size(20.dp)
                 .hoverable(interaction)
-                .background(
-                    if (hovered) theme.headerForeground.copy(alpha = 0.1f) else theme.headerBackground.copy(alpha = 0f),
-                )
+                .background(if (hovered) color.copy(alpha = 0.1f) else Color.Transparent)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, color = theme.headerForeground.copy(alpha = 0.8f))
+            Text(glyph, color = color.copy(alpha = 0.8f))
         }
     }
 

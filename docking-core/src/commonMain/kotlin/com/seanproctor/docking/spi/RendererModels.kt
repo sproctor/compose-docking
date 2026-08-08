@@ -2,6 +2,7 @@ package com.seanproctor.docking.spi
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.AutoHideSide
@@ -59,6 +60,14 @@ public class HeaderModel(
     public val menuItems: List<DockMenuItem>,
     /** Null when the dockable is not closable. */
     public val onClose: (() -> Unit)?,
+    /**
+     * Per-dockable title-bar color overrides (ModernDocking's
+     * `DockingHeaderUI.setBackgroundOverride`/`setForegroundOverride`). Null means the
+     * renderer picks its own color from the ambient [DockingTheme] as usual; a non-null
+     * [foreground] applies to the title text and the header's buttons.
+     */
+    public val background: Color? = null,
+    public val foreground: Color? = null,
 )
 
 @Stable
