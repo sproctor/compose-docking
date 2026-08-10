@@ -1,11 +1,11 @@
 # TODO
 
-## Re-enable ABI validation before the first release
+## Re-enable ABI validation
 
-Turned off 2026-08-08: the library is unreleased with no users, so every API tweak was
-costing a dump regeneration for no benefit. Turn KGP's built-in validation back on before
-publishing, so the first release establishes a baseline that later versions are checked
-against.
+Turned off 2026-08-08: the library had no users, so every API tweak was costing a dump
+regeneration for no benefit. 0.1.0 then shipped without it (2026-08-09), so there is no
+baseline yet - whichever dump gets generated first becomes one. Turn it back on once the
+API stops moving between releases, otherwise 0.x churn just produces noisy dump diffs.
 
 To restore: add back to `build-logic/src/main/kotlin/docking.kmp-library.gradle.kts`
 
