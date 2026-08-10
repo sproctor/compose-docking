@@ -14,9 +14,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # Held at v5 deliberately: v6 moves caching into gradle-actions-caching, which is
-      # proprietary and carries Gradle's Terms of Use. v5 is the newest fully-MIT release.
-      - uses: gradle/actions/setup-gradle@v5
+      # v6 defaults cache-provider to 'enhanced', the commercial gradle-actions-caching
+      # component; 'basic' is the open-source implementation over the GitHub Actions cache.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       - name: ABI check and JVM tests
         run: ./gradlew checkKotlinAbi :docking-core:jvmTest :docking-material3:assemble :docking-jewel:assemble
 
@@ -29,8 +31,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # Held at v5 deliberately: v6 moves caching into gradle-actions-caching, which is
-      # proprietary and carries Gradle's Terms of Use. v5 is the newest fully-MIT release.
-      - uses: gradle/actions/setup-gradle@v5
+      # v6 defaults cache-provider to 'enhanced', the commercial gradle-actions-caching
+      # component; 'basic' is the open-source implementation over the GitHub Actions cache.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       - name: Assemble all targets
         run: ./gradlew assemble

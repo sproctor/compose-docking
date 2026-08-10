@@ -23,8 +23,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # See build.yml: held at v5 rather than v6, which relicenses the caching component.
-      - uses: gradle/actions/setup-gradle@v5
+      # See build.yml: 'basic' keeps caching on the open-source implementation.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Check the tag matches VERSION_NAME
         if: startsWith(github.ref, 'refs/tags/')
