@@ -18,12 +18,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      # See build.yml: held at v5 rather than v6, which relicenses the caching component.
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Check the tag matches VERSION_NAME
         if: startsWith(github.ref, 'refs/tags/')

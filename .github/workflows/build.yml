@@ -9,12 +9,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      # Held at v5 deliberately: v6 moves caching into gradle-actions-caching, which is
+      # proprietary and carries Gradle's Terms of Use. v5 is the newest fully-MIT release.
+      - uses: gradle/actions/setup-gradle@v5
       - name: ABI check and JVM tests
         run: ./gradlew checkKotlinAbi :docking-core:jvmTest :docking-material3:assemble :docking-jewel:assemble
 
@@ -22,11 +24,13 @@ jobs:
     # macOS compiles/links the iOS klibs as well.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      # Held at v5 deliberately: v6 moves caching into gradle-actions-caching, which is
+      # proprietary and carries Gradle's Terms of Use. v5 is the newest fully-MIT release.
+      - uses: gradle/actions/setup-gradle@v5
       - name: Assemble all targets
         run: ./gradlew assemble
