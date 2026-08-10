@@ -19,6 +19,19 @@ The workflow refuses to run if the tag and `VERSION_NAME` disagree, runs the JVM
 then uploads all modules as a single deployment and releases it. A deployment that fails
 Central's validation is never published, so a failed run leaves nothing behind.
 
+## API changes
+
+CI runs `checkKotlinAbi`, which fails when the public ABI drifts from the dumps checked
+in under `*/api/`. After an intentional API change, regenerate and commit them:
+
+```sh
+./gradlew updateKotlinAbi
+```
+
+The dumps cover the JVM and klib targets of all three modules. There is no Android dump:
+KGP's validation does not emit one for the AGP 9 KMP Android target, so an
+Android-only ABI change will not be caught.
+
 ## Credentials
 
 Repository secrets, all four required:

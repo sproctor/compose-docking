@@ -1,24 +1,5 @@
 # TODO
 
-## Re-enable ABI validation
-
-Turned off 2026-08-08: the library had no users, so every API tweak was costing a dump
-regeneration for no benefit. 0.1.0 then shipped without it (2026-08-09), so there is no
-baseline yet - whichever dump gets generated first becomes one. Turn it back on once the
-API stops moving between releases, otherwise 0.x churn just produces noisy dump diffs.
-
-To restore: add back to `build-logic/src/main/kotlin/docking.kmp-library.gradle.kts`
-
-```kotlin
-@OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-abiValidation()
-```
-
-then run `./gradlew updateKotlinAbi` to write `api/jvm/<project>.api` and
-`api/<project>.klib.api`, and add `checkKotlinAbi` back to the CI job in
-`.github/workflows/build.yml`. Note it does not cover the Android target — see the AGP 9
-notes in the git history for why.
-
 ## Collapse a dockable to a window-edge strip ("auto-hide")
 
 **Status:** removed 2026-08-08, to be redesigned. The first implementation was a loose
