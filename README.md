@@ -7,7 +7,8 @@ and layout persistence.
 A port of the concepts and algorithms of [ModernDocking](https://github.com/andrewauclair/ModernDocking)
 (Java Swing, MIT) to an idiomatic Compose API.
 
-**Status: early development — not yet published to Maven Central.**
+**Status: early development.** Published, but expect breaking API changes between 0.x
+releases.
 
 ## Modules
 
@@ -20,6 +21,26 @@ A port of the concepts and algorithms of [ModernDocking](https://github.com/andr
 Floating OS windows and cross-window drag are desktop (JVM) features. Everything else —
 splits, tabs, in-window drag-to-dock, tab reordering, maximize, persistence —
 is common code and works on every target.
+
+## Installation
+
+Depend on a renderer; it exposes the core as an `api` dependency, so you do not need to
+declare `compose-docking-core` yourself.
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.seanproctor:compose-docking-material3:0.1.0")
+    // ...or, for the IntelliJ look on desktop:
+    // implementation("com.seanproctor:compose-docking-jewel:0.1.0")
+}
+```
+
+In a multiplatform build these go in `commonMain`, except `compose-docking-jewel`, which
+is JVM only and belongs in `jvmMain` (or `desktopMain`).
 
 ## Quick start (desktop, Material 3)
 
