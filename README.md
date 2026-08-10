@@ -29,6 +29,9 @@ declare `compose-docking-core` yourself.
 
 ```kotlin
 repositories {
+    // Compose itself resolves from Google's repository, so mavenCentral() alone
+    // is not enough - the transitive androidx artifacts will not be found.
+    google()
     mavenCentral()
 }
 
