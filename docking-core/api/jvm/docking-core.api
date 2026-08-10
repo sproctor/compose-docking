@@ -917,22 +917,6 @@ public final class com/seanproctor/docking/spi/TabStripModel {
 	public final fun getTrailingActions ()Lkotlin/jvm/functions/Function2;
 }
 
-public final class com/seanproctor/docking/state/ComposableSingletons$DockableSpecKt {
-	public static final field INSTANCE Lcom/seanproctor/docking/state/ComposableSingletons$DockableSpecKt;
-	public fun <init> ()V
-	public final fun getLambda$-149958403$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$-277220299$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$1588324796$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-}
-
-public final class com/seanproctor/docking/state/ComposableSingletons$RememberDockStateKt {
-	public static final field INSTANCE Lcom/seanproctor/docking/state/ComposableSingletons$RememberDockStateKt;
-	public fun <init> ()V
-	public final fun getLambda$-1815929515$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$-732826764$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$1498881340$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-}
-
 public final class com/seanproctor/docking/state/DockState {
 	public static final field $stable I
 	public fun <init> ()V
@@ -1204,13 +1188,6 @@ public final class com/seanproctor/docking/state/RememberDockStateKt {
 	public static final fun DockState (Lcom/seanproctor/docking/model/DockLayout;Lcom/seanproctor/docking/state/DockingSettings;Lkotlin/jvm/functions/Function1;)Lcom/seanproctor/docking/state/DockState;
 	public static synthetic fun DockState$default (Lcom/seanproctor/docking/model/DockLayout;Lcom/seanproctor/docking/state/DockingSettings;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lcom/seanproctor/docking/state/DockState;
 	public static final fun rememberDockState (Lcom/seanproctor/docking/state/DockingSettings;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)Lcom/seanproctor/docking/state/DockState;
-}
-
-public final class com/seanproctor/docking/ui/ComposableSingletons$DockAreaKt {
-	public static final field INSTANCE Lcom/seanproctor/docking/ui/ComposableSingletons$DockAreaKt;
-	public fun <init> ()V
-	public final fun getLambda$2110533584$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$560162900$com_seanproctor_docking_core ()Lkotlin/jvm/functions/Function2;
 }
 
 public final class com/seanproctor/docking/ui/DockAreaKt {

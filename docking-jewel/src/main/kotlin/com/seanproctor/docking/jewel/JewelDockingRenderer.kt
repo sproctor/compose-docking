@@ -1,39 +1,18 @@
 package com.seanproctor.docking.jewel
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
@@ -42,24 +21,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.SplitOrientation
-import com.seanproctor.docking.spi.DividerModel
-import com.seanproctor.docking.spi.DockingRenderer
-import com.seanproctor.docking.spi.DropOverlayModel
-import com.seanproctor.docking.spi.HandleKind
-import com.seanproctor.docking.spi.HandleModel
-import com.seanproctor.docking.spi.HeaderModel
-import com.seanproctor.docking.spi.LocalDockingTheme
-import com.seanproctor.docking.spi.OverlayKind
-import com.seanproctor.docking.spi.TabStripModel
-import kotlin.math.roundToInt
+import com.seanproctor.docking.spi.*
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.icon.IconKey
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
+import kotlin.math.roundToInt
 
 /**
  * Jewel implementation of the docking renderer: IDE-style tool-window headers (flat
@@ -209,28 +176,6 @@ public object JewelDockingRenderer : DockingRenderer {
             )
             model.trailingActions()
         }
-    }
-
-    /**
-     * Jewel's own icon action button, so hover/press states and icon resolution follow
-     * the IDE theme. Sized down to the 20px square IntelliJ uses in tool-window headers.
-     */
-    @Composable
-    private fun IconActionButton(
-        key: IconKey,
-        contentDescription: String,
-        tint: Color? = null,
-        onClick: () -> Unit,
-    ) {
-        IconActionButton(
-            key = key,
-            contentDescription = contentDescription,
-            onClick = onClick,
-            modifier = Modifier.size(20.dp),
-            // Null keeps the IDE theme's own icon colors; a dockable with a title-bar
-            // color override tints them so they stay legible against it.
-            colorFilter = tint?.let { ColorFilter.tint(it) },
-        )
     }
 
     /**

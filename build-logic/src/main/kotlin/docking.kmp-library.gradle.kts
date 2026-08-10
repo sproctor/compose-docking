@@ -15,7 +15,16 @@ kotlin {
     // KGP's built-in ABI validation. The standalone binary-compatibility-validator does
     // not recognize the AGP 9 KMP Android target, so it silently stopped dumping it.
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-    abiValidation()
+    abiValidation {
+        filters {
+            exclude {
+                // Compose's generated lambda holders. Their names carry a hash that moves
+                // whenever a @Composable lambda is added or reordered, so dumping them
+                // would mean regenerating the reference files after unrelated edits.
+                byNames.add("**.ComposableSingletons**")
+            }
+        }
+    }
 
     jvm()
     android {

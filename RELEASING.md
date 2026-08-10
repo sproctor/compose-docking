@@ -28,7 +28,12 @@ in under `*/api/`. After an intentional API change, regenerate and commit them:
 ./gradlew updateKotlinAbi
 ```
 
-The dumps cover the JVM and klib targets of all three modules. There is no Android dump:
+The dumps cover the JVM and klib targets of all three modules. Compose's generated
+`ComposableSingletons` lambda holders are filtered out - their names embed both a hash
+that shifts when a `@Composable` lambda moves and the Kotlin module name, which differs
+between a local build and CI - so adding a lambda does not churn the reference files.
+
+There is no Android dump:
 KGP's validation does not emit one for the AGP 9 KMP Android target, so an
 Android-only ABI change will not be caught.
 

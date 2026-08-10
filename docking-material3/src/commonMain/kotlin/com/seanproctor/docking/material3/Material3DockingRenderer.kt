@@ -1,40 +1,21 @@
 package com.seanproctor.docking.material3
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
@@ -43,22 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.seanproctor.docking.material3.generated.resources.Res
-import com.seanproctor.docking.material3.generated.resources.close
-import com.seanproctor.docking.material3.generated.resources.more_vert
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.SplitOrientation
-import com.seanproctor.docking.spi.DividerModel
-import com.seanproctor.docking.spi.DockingRenderer
-import com.seanproctor.docking.spi.DropOverlayModel
-import com.seanproctor.docking.spi.HandleKind
-import com.seanproctor.docking.spi.HandleModel
-import com.seanproctor.docking.spi.HeaderModel
-import com.seanproctor.docking.spi.LocalDockingTheme
-import com.seanproctor.docking.spi.OverlayKind
-import com.seanproctor.docking.spi.TabStripModel
+import com.seanproctor.docking.spi.*
 import kotlin.math.roundToInt
-import org.jetbrains.compose.resources.painterResource
 
 /**
  * Material 3 implementation of the docking renderer. Deliberately avoids `TabRow`
@@ -84,13 +53,10 @@ public object Material3DockingRenderer : DockingRenderer {
                     ) {
                         model.tabs.forEachIndexed { index, tab ->
                             if (model.dropInsertionIndex == index) TabCaret()
-                            val interaction = remember { MutableInteractionSource() }
-                            val hovered by interaction.collectIsHoveredAsState()
                             Row(
                                 modifier = Modifier
                                     .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
                                     .then(tab.dragModifier)
-                                    .hoverable(interaction)
                                     .fillMaxHeight()
                                     .background(if (tab.isSelected) colors.surface else theme.toolbarBackground)
                                     .drawSelectionUnderline(tab.isSelected, colors.primary)
@@ -169,40 +135,6 @@ public object Material3DockingRenderer : DockingRenderer {
                 )
                 model.trailingActions()
             }
-        }
-    }
-
-    /**
-     * A compact icon button for tab and header affordances. [color] follows the header's
-     * foreground so a dockable with a title-bar color override keeps legible buttons.
-     */
-    @Composable
-    private fun IconActionButton(
-        painter: Painter,
-        contentDescription: String,
-        color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        val interaction = remember { MutableInteractionSource() }
-        val hovered by interaction.collectIsHoveredAsState()
-        Box(
-            Modifier
-                .padding(horizontal = 2.dp)
-                .size(22.dp)
-                .hoverable(interaction)
-                .background(
-                    if (hovered) color.copy(alpha = 0.12f) else Color.Transparent,
-                    MaterialTheme.shapes.extraSmall,
-                )
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painter,
-                contentDescription = contentDescription,
-                tint = color,
-                modifier = Modifier.size(16.dp),
-            )
         }
     }
 
