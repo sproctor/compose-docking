@@ -1,9 +1,6 @@
 package com.seanproctor.docking.tree
 
 import com.seanproctor.docking.model.AnchorId
-import com.seanproctor.docking.model.AutoHideEntry
-import com.seanproctor.docking.model.AutoHideSide
-import com.seanproctor.docking.model.AutoHideState
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -28,11 +25,10 @@ internal data class LayoutResult(
 )
 
 /** Where a dockable currently lives inside a window. */
-internal enum class DockablePlacement { Docked, AutoHidden, BehindMaximize }
+internal enum class DockablePlacement { Docked, BehindMaximize }
 
 internal fun DockWindow.placementOf(dockableId: DockableId): DockablePlacement? = when {
     root?.containsDockable(dockableId) == true -> DockablePlacement.Docked
-    autoHide.allEntries.any { it.dockableId == dockableId } -> DockablePlacement.AutoHidden
     maximized?.savedRoot?.containsDockable(dockableId) == true -> DockablePlacement.BehindMaximize
     else -> null
 }
@@ -50,7 +46,7 @@ internal fun DockWindow.restoredFromMaximize(): DockWindow =
 /** Drops empty floating windows, returning the surviving layout and the removed ids. */
 internal fun DockLayout.gcFloatingWindows(): LayoutResult {
     val (kept, removed) = windows.partition { w ->
-        w.kind == WindowKind.Main || w.root != null || !w.autoHide.isEmpty()
+        w.kind == WindowKind.Main || w.root != null
     }
     return if (removed.isEmpty()) {
         LayoutResult(this)
@@ -60,22 +56,15 @@ internal fun DockLayout.gcFloatingWindows(): LayoutResult {
 }
 
 /**
- * Removes [dockableId] from wherever it lives (tree or auto-hide toolbar). A maximized
- * containing window is restored first. Empty floating windows are dropped.
+ * Removes [dockableId] from its window tree. A maximized containing window is restored
+ * first. Empty floating windows are dropped.
  */
 internal fun TreeContext.undockFromLayout(
     layout: DockLayout,
     dockableId: DockableId,
 ): LayoutResult {
     val window = layout.windowContaining(dockableId) ?: return LayoutResult(layout)
-    var w = window.restoredFromMaximize()
-    w = when {
-        w.autoHide.sideOf(dockableId) != null -> {
-            val side = w.autoHide.sideOf(dockableId)!!
-            w.copy(autoHide = w.autoHide.with(side, w.autoHide[side].filter { it.dockableId != dockableId }))
-        }
-        else -> w.copy(root = w.root?.let { undock(it, dockableId) })
-    }
+    val w = window.restoredFromMaximize().let { it.copy(root = it.root?.let { r -> undock(r, dockableId) }) }
     return layout.replaceWindow(w).gcFloatingWindows()
 }
 
@@ -163,62 +152,6 @@ internal fun restoreMaximizeInLayout(layout: DockLayout, windowId: WindowId): Do
     return layout.replaceWindow(window.restoredFromMaximize())
 }
 
-/**
- * Moves [dockableId] into the auto-hide toolbar on [side] of its current window,
- * removing it from the tree (with anchor restore, matching ModernDocking).
- */
-internal fun TreeContext.autoHideInLayout(
-    layout: DockLayout,
-    dockableId: DockableId,
-    side: AutoHideSide,
-    slideProportion: Float = AutoHideEntry.DEFAULT_SLIDE_PROPORTION,
-): LayoutResult {
-    val window = layout.windowContaining(dockableId) ?: return LayoutResult(layout)
-    var w = window.restoredFromMaximize()
-    if (w.autoHide.sideOf(dockableId) != null) return LayoutResult(layout)
-    w = w.copy(root = w.root?.let { undock(it, dockableId) })
-    w = w.copy(
-        autoHide = w.autoHide.with(
-            side,
-            w.autoHide[side] + AutoHideEntry(dockableId, slideProportion),
-        ),
-    )
-    return LayoutResult(layout.replaceWindow(w))
-}
-
-/**
- * Moves [dockableId] out of its auto-hide toolbar back into the window tree, docking at
- * the window root on the toolbar's side with the slide proportion as split proportion.
- */
-internal fun TreeContext.autoShowInLayout(layout: DockLayout, dockableId: DockableId): DockLayout {
-    val window = layout.windows.firstOrNull { it.autoHide.sideOf(dockableId) != null } ?: return layout
-    val side = window.autoHide.sideOf(dockableId)!!
-    val entry = window.autoHide[side].first { it.dockableId == dockableId }
-    var w = window.restoredFromMaximize()
-    w = w.copy(autoHide = w.autoHide.with(side, w.autoHide[side].filter { it.dockableId != dockableId }))
-    val region = when (side) {
-        AutoHideSide.West -> DockRegion.West
-        AutoHideSide.East -> DockRegion.East
-        AutoHideSide.South -> DockRegion.South
-    }
-    val newRoot = dockAtRoot(w.root, dockableId, region, entry.slideProportion)
-    return layout.replaceWindow(w.copy(root = newRoot))
-}
-
-/** Updates the persisted slide proportion of an auto-hidden dockable. */
-internal fun setSlideProportionInLayout(
-    layout: DockLayout,
-    dockableId: DockableId,
-    proportion: Float,
-): DockLayout {
-    val window = layout.windows.firstOrNull { it.autoHide.sideOf(dockableId) != null } ?: return layout
-    val side = window.autoHide.sideOf(dockableId)!!
-    val entries = window.autoHide[side].map {
-        if (it.dockableId == dockableId) it.copy(slideProportion = proportion.coerceIn(0.1f, 0.9f)) else it
-    }
-    return layout.replaceWindow(window.copy(autoHide = window.autoHide.with(side, entries)))
-}
-
 /** Sets the persisted bounds of [windowId]. */
 internal fun setWindowBoundsInLayout(
     layout: DockLayout,
@@ -242,8 +175,7 @@ internal fun closeWindowInLayout(layout: DockLayout, windowId: WindowId): Layout
 /**
  * Grafts every floating window's content into the main window (used when restoring a
  * layout on a platform without floating-window support). Each floating tree is attached
- * as an East split taking 25% of the main window; auto-hide entries merge into the main
- * window's toolbars.
+ * as an East split taking 25% of the main window, and the floating windows are dropped.
  */
 internal fun TreeContext.mergeFloatingIntoMain(layout: DockLayout): DockLayout {
     if (layout.floatingWindows.isEmpty()) return layout
@@ -263,13 +195,6 @@ internal fun TreeContext.mergeFloatingIntoMain(layout: DockLayout): DockLayout {
                 } ?: floatingRoot,
             )
         }
-        main = main.copy(
-            autoHide = AutoHideState(
-                west = main.autoHide.west + f.autoHide.west,
-                east = main.autoHide.east + f.autoHide.east,
-                south = main.autoHide.south + f.autoHide.south,
-            ),
-        )
     }
     return DockLayout(listOf(main))
 }

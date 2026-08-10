@@ -12,7 +12,7 @@ import com.seanproctor.docking.model.DockableId
  * Bridges `rememberSaveable` state across compositions. Each dockable's content runs
  * under its own [SaveableStateRegistry]; when the content leaves one composition (its
  * dockable moved to another window, or was closed), the registry's values are captured
- * here and restored wherever the dockable appears next — including a different OS
+ * here and restored wherever the dockable appears next - including a different OS
  * window's composition, which `movableContentOf` cannot cross.
  */
 internal class DockableSaveableStateHolder {

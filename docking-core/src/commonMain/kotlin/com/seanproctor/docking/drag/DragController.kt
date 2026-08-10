@@ -7,7 +7,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockLayout
@@ -80,7 +79,7 @@ internal interface DragListener {
  *
  * The pre-drag layout is snapshotted and the dragged dockables are undocked immediately
  * (the layout visibly reflows, ModernDocking behavior); a failed or cancelled drop
- * restores the snapshot — the whole drag is transactional.
+ * restores the snapshot - the whole drag is transactional.
  */
 @Stable
 internal class DragController(private val state: DockState) {
@@ -94,7 +93,7 @@ internal class DragController(private val state: DockState) {
 
     /**
      * Window-root <-> shared drag space converters, set by the platform window host
-     * (identity when absent — the single-window case). Kept separate from window
+     * (identity when absent - the single-window case). Kept separate from window
      * registration so host and DockArea effects may run in any order.
      */
     private val converters = mutableMapOf<WindowId, ScreenConverter>()
@@ -316,25 +315,6 @@ internal class DragController(private val state: DockState) {
             DropTarget.Root(windowId, DockRegion.East),
         )
 
-        // Pin handles, stacked next to their root handle.
-        val autoHideStyle = payload.options.autoHideStyle
-        val pinAllowed = payload.options.autoHideAllowed
-        add(
-            HandleKind.PinWest, Offset(root.left + margin, root.center.y + size + gap),
-            pinAllowed && (autoHideStyle == DockingStyle.Vertical || autoHideStyle == DockingStyle.Both),
-            DropTarget.Pin(windowId, AutoHideSide.West),
-        )
-        add(
-            HandleKind.PinEast, Offset(root.right - margin, root.center.y + size + gap),
-            pinAllowed && (autoHideStyle == DockingStyle.Vertical || autoHideStyle == DockingStyle.Both),
-            DropTarget.Pin(windowId, AutoHideSide.East),
-        )
-        add(
-            HandleKind.PinSouth, Offset(root.center.x + size + gap, root.bottom - margin),
-            pinAllowed && (autoHideStyle == DockingStyle.Horizontal || autoHideStyle == DockingStyle.Both),
-            DropTarget.Pin(windowId, AutoHideSide.South),
-        )
-
         // Handles over the hovered dockable.
         val hoveredDockable = window.scope.bounds.dockableAt(local)
         if (hoveredDockable != null) {
@@ -370,7 +350,7 @@ internal class DragController(private val state: DockState) {
         val density = window.scope.density
         val hitInflation = HANDLE_HIT_INFLATION_DP * density
 
-        // 1..3: handles (root, dockable, pin — the list already encodes all of them).
+        // 1..3: handles (root, dockable, pin - the list already encodes all of them).
         s.handles.firstOrNull { it.enabled && it.rect.inflate(hitInflation).contains(local) }
             ?.let { return it.target }
 
@@ -446,10 +426,6 @@ internal class DragController(private val state: DockState) {
             is DropTarget.OnNode -> {
                 state.dock(primary, DockTarget.OnNode(target.windowId, target.nodeId), target.region)
                 dockRest()
-                true
-            }
-            is DropTarget.Pin -> {
-                s.payload.all.forEach { state.autoHideInto(it, target.windowId, target.side) }
                 true
             }
             is DropTarget.TabInsert -> {

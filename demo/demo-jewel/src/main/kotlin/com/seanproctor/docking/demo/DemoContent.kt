@@ -1,6 +1,7 @@
 package com.seanproctor.docking.demo
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +28,23 @@ import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.DockingStyle
 import com.seanproctor.docking.model.TabPreference
-import com.seanproctor.docking.state.DockStateBuilder
+import com.seanproctor.docking.model.DockableId
+import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.state.DockableSpec
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.window.Popup
+import com.seanproctor.docking.ui.LocalDockCapabilities
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconActionButton
+import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -189,7 +206,160 @@ private fun ScrollingWithToolbarContent() {
 
 // ---------- The dockables ----------
 
-fun DockStateBuilder.demoDockables() {
+/**
+ * Registers one demo dockable. The library draws no header affordances of its own, so
+ * every panel gets the standard set - maximized indicator, overflow menu, close - from
+ * [DemoHeaderActions].
+ */
+private fun DockState.dockable(
+    id: String,
+    title: @Composable () -> String,
+    options: DockableOptions = DockableOptions(),
+    headerBackground: (@Composable () -> Color)? = null,
+    headerForeground: (@Composable () -> Color)? = null,
+    canClose: suspend () -> Boolean = { true },
+    saveState: (() -> JsonElement)? = null,
+    restoreState: ((JsonElement) -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val dockableId = DockableId(id)
+    registry.register(
+        DockableSpec(
+            id = dockableId,
+            options = options,
+            title = title,
+            headerBackground = headerBackground,
+            headerForeground = headerForeground,
+            canClose = canClose,
+            saveState = saveState,
+            restoreState = restoreState,
+            trailingActions = { DemoHeaderActions(dockableId, headerForeground?.invoke()) },
+            tabActions = { DemoTabActions(dockableId) },
+            tabStripActions = { DemoTabStripActions(dockableId) },
+            content = content,
+        ),
+    )
+}
+
+/** The overflow menu: move to a window, maximize/restore. */
+@Composable
+private fun DockState.DemoOverflowMenu(id: DockableId, tint: Color?) {
+    val options = registry[id]?.options ?: DockableOptions()
+    val canFloat = LocalDockCapabilities.current.floatingWindows && options.floatable
+    if (!canFloat && !options.maximizable) return
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        DemoIconButton(AllIconsKeys.Actions.More, "More options", tint) { menuOpen = true }
+        if (menuOpen) {
+            DemoMenu(onDismiss = { menuOpen = false }) {
+                if (canFloat) {
+                    DemoMenuItem("Window") { menuOpen = false; moveToNewWindow(id) }
+                }
+                if (options.maximizable) {
+                    DemoMenuItem(if (isMaximized(id)) "Restore" else "Maximize") {
+                        menuOpen = false
+                        toggleMaximize(id)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The tab strip's trailing menu, for the selected tab. ModernDocking only adds this
+ * trailing component in always-display-tabs mode, so the demo matches.
+ */
+@Composable
+private fun DockState.DemoTabStripActions(id: DockableId) {
+    if (!settings.alwaysDisplayTabs) return
+    DemoOverflowMenu(id, tint = null)
+}
+
+/**
+ * A tab's close button. ModernDocking only puts close buttons on tabs in
+ * always-display-tabs mode - otherwise each dockable keeps its own header - so the demo
+ * follows the same rule.
+ */
+@Composable
+private fun DockState.DemoTabActions(id: DockableId) {
+    if (!settings.alwaysDisplayTabs) return
+    if (registry[id]?.options?.closable != true) return
+    val scope = rememberCoroutineScope()
+    DemoIconButton(AllIconsKeys.General.CloseSmall, "Close", tint = null) { scope.launch { close(id) } }
+}
+
+/** The title-bar buttons: maximized indicator, overflow menu, close. */
+@Composable
+private fun DockState.DemoHeaderActions(id: DockableId, tint: Color?) {
+    val scope = rememberCoroutineScope()
+    val options = registry[id]?.options ?: DockableOptions()
+    val maximized = isMaximized(id)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (maximized) {
+            Icon(
+                key = AllIconsKeys.General.ExpandComponent,
+                contentDescription = "Maximized",
+                modifier = Modifier.padding(end = 2.dp).size(16.dp),
+                tint = tint ?: JewelTheme.globalColors.text.normal,
+            )
+        }
+        DemoOverflowMenu(id, tint)
+        if (options.closable) {
+            DemoIconButton(AllIconsKeys.General.Close, "Close", tint) { scope.launch { close(id) } }
+        }
+    }
+}
+
+@Composable
+private fun DemoIconButton(key: IconKey, contentDescription: String, tint: Color?, onClick: () -> Unit) {
+    IconActionButton(
+        key = key,
+        contentDescription = contentDescription,
+        onClick = onClick,
+        modifier = Modifier.size(20.dp),
+        colorFilter = tint?.let { ColorFilter.tint(it) },
+    )
+}
+
+@Composable
+private fun DemoMenu(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Popup(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .width(IntrinsicSize.Max)
+                .background(JewelTheme.globalColors.panelBackground)
+                .border(1.dp, JewelTheme.globalColors.borders.normal)
+                .padding(vertical = 4.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun DemoMenuItem(label: String, onClick: () -> Unit) {
+    Text(
+        label,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+    )
+}
+
+/**
+ * The demo's panel chrome. The library draws no border of its own, so an app decides how
+ * a dockable's content is bounded; here it is a hairline in the IDE's normal border color.
+ */
+@Composable
+fun DemoPanel(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().border(1.dp, JewelTheme.globalColors.borders.normal)) {
+        content()
+    }
+}
+
+
+fun DockState.demoDockables() {
     for (word in demoPanelWords) {
         val id = word.lowercase()
         val titleColor = demoPanelTitleColors[id]
@@ -203,7 +373,7 @@ fun DockStateBuilder.demoDockables() {
             headerBackground = titleColor?.let { { it } },
             headerForeground = titleColor?.let { { Color.Black } },
         ) {
-            SimplePanelContent(id)
+            DemoPanel { SimplePanelContent(id) }
         }
     }
 
@@ -217,7 +387,7 @@ fun DockStateBuilder.demoDockables() {
             tabPreference = TabPreference.Top,
         ),
     ) {
-        SimplePanelContent("always-displayed")
+        DemoPanel { SimplePanelContent("always-displayed") }
     }
 
     dockable(
@@ -227,11 +397,10 @@ fun DockStateBuilder.demoDockables() {
             floatable = false,
             maximizable = false,
             dockingStyle = DockingStyle.Vertical,
-            autoHideStyle = DockingStyle.Vertical,
         ),
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
-        Box(Modifier.fillMaxSize())
+        DemoPanel {}
     }
 
     dockable(
@@ -241,11 +410,10 @@ fun DockStateBuilder.demoDockables() {
             floatable = false,
             maximizable = false,
             dockingStyle = DockingStyle.Horizontal,
-            autoHideStyle = DockingStyle.Horizontal,
         ),
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
-        OutputPanelContent()
+        DemoPanel { OutputPanelContent() }
     }
 
     dockable(
@@ -254,17 +422,22 @@ fun DockStateBuilder.demoDockables() {
         saveState = { propsDemo.toJson() },
         restoreState = { propsDemo.fromJson(it) },
     ) {
-        PropertiesDemoContent()
+        DemoPanel { PropertiesDemoContent() }
     }
 
     dockable(id = "fixed-size", title = { "Fixed Size" }) {
-        Box(Modifier.sizeIn(minWidth = 300.dp, minHeight = 300.dp), contentAlignment = Alignment.Center) {
-            Text("minimum size 300×300")
+        DemoPanel {
+            Box(
+                Modifier.sizeIn(minWidth = 300.dp, minHeight = 300.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("minimum size 300x300")
+            }
         }
     }
 
     dockable(id = "scroll-with-toolbar", title = { "Scrolling With Toolbar" }) {
-        ScrollingWithToolbarContent()
+        DemoPanel { ScrollingWithToolbarContent() }
     }
 
     dockable(
@@ -272,6 +445,6 @@ fun DockStateBuilder.demoDockables() {
         title = { "Themes" },
         options = DockableOptions(closable = false, floatable = false),
     ) {
-        ThemesPanelContent()
+        DemoPanel { ThemesPanelContent() }
     }
 }

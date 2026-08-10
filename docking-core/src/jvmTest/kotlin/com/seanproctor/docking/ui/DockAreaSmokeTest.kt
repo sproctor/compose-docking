@@ -7,7 +7,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.state.DockState
@@ -82,19 +81,6 @@ class DockAreaSmokeTest {
         onNodeWithText("content-b").assertExists()
     }
 
-    @Test
-    fun autoHideToolbarShowsButtonAndExpandsPanel() = runComposeUiTest {
-        val state = uiState()
-        state.dock(A)
-        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.East)
-        setContent { DockArea(state) }
-        // Hidden: content not composed, toolbar button present.
-        onAllNodesWithText("content-b").assertCountEquals(0)
-        onNodeWithText("Beta").assertExists().performClick()
-        waitForIdle()
-        onNodeWithText("content-b").assertExists()
-    }
 
     @Test
     fun maximizeShowsOnlyMaximizedDockable() = runComposeUiTest {

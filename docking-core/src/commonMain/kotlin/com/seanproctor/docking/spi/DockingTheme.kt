@@ -6,7 +6,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Docking chrome colors — a 1:1 map of ModernDocking's theme keys. Adapters derive these
+ * Docking chrome colors - a 1:1 map of ModernDocking's theme keys. Adapters derive these
  * from their design system's theme ([MaterialTheme]/[JewelTheme]); the defaults mirror
  * ModernDocking's hardcoded fallbacks.
  */

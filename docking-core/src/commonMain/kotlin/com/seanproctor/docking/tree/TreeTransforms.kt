@@ -223,10 +223,10 @@ private fun TreeContext.vacatedSlot(restoreAnchor: AnchorId?): DockNode? =
 
 /**
  * Docks [dockableId] into anchor [anchorId] using ModernDocking's cascade:
- * 1. an [DockNode.Anchor] placeholder exists → replace it with the dockable;
- * 2. another dockable carrying the anchor is docked → dock Center onto the one with the
+ * 1. an [DockNode.Anchor] placeholder exists -> replace it with the dockable;
+ * 2. another dockable carrying the anchor is docked -> dock Center onto the one with the
  *    largest area fraction;
- * 3. otherwise → `null`; the caller falls back to docking at the window root.
+ * 3. otherwise -> `null`; the caller falls back to docking at the window root.
  */
 internal fun TreeContext.dockIntoAnchor(
     root: DockNode,

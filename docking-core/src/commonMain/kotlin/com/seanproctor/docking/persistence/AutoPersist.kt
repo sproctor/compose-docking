@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.drop
 
 /**
  * Restores the layout from [storage] on first composition (keeping the current layout
- * when the storage is empty or corrupt), then saves it debounced on every change —
+ * when the storage is empty or corrupt), then saves it debounced on every change -
  * the port of ModernDocking's `AppState` auto-persist.
  *
  * @param paused suspends saving while true (restore still happens); mirror of

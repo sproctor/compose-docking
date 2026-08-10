@@ -10,7 +10,5 @@ plugins {
     alias(libs.plugins.mavenPublish) apply false
 }
 
-// ABI validation is KGP's built-in `abiValidation`, enabled per-project by the
-// docking.kmp-library convention plugin — so the published libraries opt in and the
-// demos and docking-jewel simply never do. (Jewel offers no binary-compatibility
-// guarantees between its own releases, so pinning our adapter's ABI would be churn.)
+// No ABI validation while the library is unreleased and has no users - see TODO.md for
+// turning KGP's built-in `abiValidation` back on before the first published release.

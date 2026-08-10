@@ -9,7 +9,7 @@ import com.seanproctor.docking.state.LayoutChangeKind
 import kotlinx.serialization.json.JsonElement
 
 /**
- * Creates dockables referenced by a saved layout that aren't registered yet — the port of
+ * Creates dockables referenced by a saved layout that aren't registered yet - the port of
  * ModernDocking's dynamic dockable factory. Resolved specs are auto-registered.
  */
 public fun interface DockableResolver {
@@ -25,7 +25,7 @@ public fun DockState.captureLayout(): PersistedApplicationLayout =
  *
  * Referenced dockables missing from the registry are resolved via [resolver] (and
  * auto-registered); leaves that still can't be resolved are *retained* in the tree and
- * rendered as missing-dockable placeholders — late registration fills them in reactively,
+ * rendered as missing-dockable placeholders - late registration fills them in reactively,
  * and re-persisting round-trips them losslessly. Registered dockables get their
  * [DockableSpec.restoreState] called with the persisted properties.
  *

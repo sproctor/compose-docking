@@ -1,6 +1,7 @@
 package com.seanproctor.docking.demo
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,16 +10,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Monitor
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,17 +38,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.DockingStyle
 import com.seanproctor.docking.model.TabPreference
-import com.seanproctor.docking.state.DockStateBuilder
+import com.seanproctor.docking.demo.generated.resources.Res
+import com.seanproctor.docking.demo.generated.resources.fullscreen
+import com.seanproctor.docking.model.DockableId
+import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.state.DockableSpec
+import com.seanproctor.docking.ui.LocalDockCapabilities
+import kotlinx.serialization.json.JsonElement
+import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.launch
 
 // The Material 3 face of the ModernDocking basic demo. Panel identities, the default
 // layout, and the panels' behavior live in demo-shared's DemoModel.kt.
@@ -222,7 +240,145 @@ private fun ScrollingWithToolbarContent() {
 
 // ---------- The dockables ----------
 
-fun DockStateBuilder.demoDockables() {
+/**
+ * Registers one demo dockable. The library draws no header affordances of its own, so
+ * every panel gets the standard set - maximized indicator, overflow menu, close - from
+ * [DemoHeaderActions].
+ */
+private fun DockState.dockable(
+    id: String,
+    title: @Composable () -> String,
+    options: DockableOptions = DockableOptions(),
+    icon: (@Composable () -> Painter)? = null,
+    headerBackground: (@Composable () -> Color)? = null,
+    headerForeground: (@Composable () -> Color)? = null,
+    canClose: suspend () -> Boolean = { true },
+    saveState: (() -> JsonElement)? = null,
+    restoreState: ((JsonElement) -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val dockableId = DockableId(id)
+    registry.register(
+        DockableSpec(
+            id = dockableId,
+            options = options,
+            title = title,
+            icon = icon,
+            headerBackground = headerBackground,
+            headerForeground = headerForeground,
+            canClose = canClose,
+            saveState = saveState,
+            restoreState = restoreState,
+            trailingActions = { DemoHeaderActions(dockableId, headerForeground?.invoke()) },
+            tabActions = { DemoTabActions(dockableId) },
+            tabStripActions = { DemoTabStripActions(dockableId) },
+            content = content,
+        ),
+    )
+}
+
+/** The overflow menu: move to a window, maximize/restore. */
+@Composable
+private fun DockState.DemoOverflowMenu(id: DockableId, color: Color) {
+    val options = registry[id]?.options ?: DockableOptions()
+    val canFloat = LocalDockCapabilities.current.floatingWindows && options.floatable
+    if (!canFloat && !options.maximizable) return
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        DemoIconButton(Icons.Filled.MoreVert, "More options", color) { menuOpen = true }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            if (canFloat) {
+                DropdownMenuItem(
+                    text = { Text("Window") },
+                    onClick = { menuOpen = false; moveToNewWindow(id) },
+                )
+            }
+            if (options.maximizable) {
+                DropdownMenuItem(
+                    text = { Text(if (isMaximized(id)) "Restore" else "Maximize") },
+                    onClick = { menuOpen = false; toggleMaximize(id) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The tab strip's trailing menu, for the selected tab. ModernDocking only adds this
+ * trailing component in always-display-tabs mode, so the demo matches.
+ */
+@Composable
+private fun DockState.DemoTabStripActions(id: DockableId) {
+    if (!settings.alwaysDisplayTabs) return
+    DemoOverflowMenu(id, MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * A tab's close button. ModernDocking only puts close buttons on tabs in
+ * always-display-tabs mode - otherwise each dockable keeps its own header - so the demo
+ * follows the same rule.
+ */
+@Composable
+private fun DockState.DemoTabActions(id: DockableId) {
+    if (!settings.alwaysDisplayTabs) return
+    if (registry[id]?.options?.closable != true) return
+    val scope = rememberCoroutineScope()
+    DemoIconButton(Icons.Filled.Close, "Close", MaterialTheme.colorScheme.onSurfaceVariant) {
+        scope.launch { close(id) }
+    }
+}
+
+/** The title-bar buttons: maximized indicator, overflow menu, close. */
+@Composable
+private fun DockState.DemoHeaderActions(id: DockableId, tint: Color?) {
+    val scope = rememberCoroutineScope()
+    val color = tint ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val options = registry[id]?.options ?: DockableOptions()
+    val maximized = isMaximized(id)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (maximized) {
+            Icon(
+                painterResource(Res.drawable.fullscreen),
+                contentDescription = "Maximized",
+                tint = color,
+                modifier = Modifier.padding(end = 2.dp).size(16.dp),
+            )
+        }
+        DemoOverflowMenu(id, color)
+        if (options.closable) {
+            DemoIconButton(Icons.Filled.Close, "Close", color) { scope.launch { close(id) } }
+        }
+    }
+}
+
+@Composable
+private fun DemoIconButton(
+    imageVector: ImageVector,
+    contentDescription: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier.padding(horizontal = 2.dp).size(22.dp).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector, contentDescription, tint = color, modifier = Modifier.size(16.dp))
+    }
+}
+
+/**
+ * The demo's panel chrome. The library draws no border of its own, so an app decides how
+ * a dockable's content is bounded; here it is a hairline in the theme's outline color.
+ */
+@Composable
+fun DemoPanel(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().border(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        content()
+    }
+}
+
+
+fun DockState.demoDockables() {
     for (word in demoPanelWords) {
         val id = word.lowercase()
         val titleColor = demoPanelTitleColors[id]
@@ -236,7 +392,7 @@ fun DockStateBuilder.demoDockables() {
             headerBackground = titleColor?.let { { it } },
             headerForeground = titleColor?.let { { Color.Black } },
         ) {
-            SimplePanelContent(id)
+            DemoPanel { SimplePanelContent(id) }
         }
     }
 
@@ -250,7 +406,7 @@ fun DockStateBuilder.demoDockables() {
             tabPreference = TabPreference.Top,
         ),
     ) {
-        SimplePanelContent("always-displayed")
+        DemoPanel { SimplePanelContent("always-displayed") }
     }
 
     dockable(
@@ -260,12 +416,11 @@ fun DockStateBuilder.demoDockables() {
             floatable = false,
             maximizable = false,
             dockingStyle = DockingStyle.Vertical,
-            autoHideStyle = DockingStyle.Vertical,
         ),
         icon = { rememberVectorPainter(Icons.Filled.Monitor) },
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
-        Box(Modifier.fillMaxSize())
+        DemoPanel {}
     }
 
     dockable(
@@ -275,12 +430,11 @@ fun DockStateBuilder.demoDockables() {
             floatable = false,
             maximizable = false,
             dockingStyle = DockingStyle.Horizontal,
-            autoHideStyle = DockingStyle.Horizontal,
         ),
         icon = { rememberVectorPainter(Icons.Filled.Monitor) },
         canClose = { closeConfirmation.ask("Are you sure you want to close this panel?") },
     ) {
-        OutputPanelContent()
+        DemoPanel { OutputPanelContent() }
     }
 
     dockable(
@@ -289,17 +443,22 @@ fun DockStateBuilder.demoDockables() {
         saveState = { propsDemo.toJson() },
         restoreState = { propsDemo.fromJson(it) },
     ) {
-        PropertiesDemoContent()
+        DemoPanel { PropertiesDemoContent() }
     }
 
     dockable(id = "fixed-size", title = { "Fixed Size" }) {
-        Box(Modifier.sizeIn(minWidth = 300.dp, minHeight = 300.dp), contentAlignment = Alignment.Center) {
-            Text("minimum size 300×300")
+        DemoPanel {
+            Box(
+                Modifier.sizeIn(minWidth = 300.dp, minHeight = 300.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("minimum size 300x300")
+            }
         }
     }
 
     dockable(id = "scroll-with-toolbar", title = { "Scrolling With Toolbar" }) {
-        ScrollingWithToolbarContent()
+        DemoPanel { ScrollingWithToolbarContent() }
     }
 
     dockable(
@@ -307,6 +466,6 @@ fun DockStateBuilder.demoDockables() {
         title = { "Themes" },
         options = DockableOptions(closable = false, floatable = false),
     ) {
-        ThemesPanelContent()
+        DemoPanel { ThemesPanelContent() }
     }
 }

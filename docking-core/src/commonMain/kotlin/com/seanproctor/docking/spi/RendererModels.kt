@@ -1,11 +1,11 @@
 package com.seanproctor.docking.spi
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.seanproctor.docking.model.DockableId
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.SplitOrientation
 
 /** Where the tab strip of a group is placed. */
@@ -13,7 +13,7 @@ public enum class TabPlacement { Top, Bottom }
 
 /**
  * One tab of a tab group. [dragModifier] carries the core-built gesture handling
- * (select on click, in-strip reorder, drag-out escalation) — the renderer's only
+ * (select on click, in-strip reorder, drag-out escalation) - the renderer's only
  * obligation is to apply it (plus [reorderOffsetX] as an x-offset) to the tab element.
  */
 @Stable
@@ -24,8 +24,13 @@ public class TabItemModel(
     public val tooltip: String?,
     public val isSelected: Boolean,
     public val onSelect: () -> Unit,
-    /** Null when the dockable is not closable. */
-    public val onClose: (() -> Unit)?,
+    /**
+     * Affordances the application draws inside this tab, from
+     * [com.seanproctor.docking.state.DockableSpec.tabActions] - a close button, a dirty
+     * marker, whatever it wants. The library contributes none, so an app that draws
+     * nothing here gets tabs with no close button.
+     */
+    public val actions: @Composable () -> Unit,
     public val dragModifier: Modifier,
     /** Live x-offset in px while this tab is being reordered, else 0. */
     public val reorderOffsetX: Float,
@@ -36,8 +41,11 @@ public class TabStripModel(
     public val tabs: List<TabItemModel>,
     public val selectedIndex: Int,
     public val placement: TabPlacement,
-    /** Menu for the trailing settings (gear) button of the strip's selected dockable. */
-    public val trailingMenuItems: List<DockMenuItem>,
+    /**
+     * The selected dockable's [com.seanproctor.docking.state.DockableSpec.tabStripActions],
+     * drawn at the trailing edge of the strip.
+     */
+    public val trailingActions: @Composable () -> Unit,
     /** Apply to empty strip area: dragging it moves the whole tab group. */
     public val gutterDragModifier: Modifier,
     /** Non-null while a drag hovers the strip: render an insertion caret before this index. */
@@ -54,12 +62,14 @@ public class HeaderModel(
     public val title: String,
     public val icon: Painter?,
     public val isActive: Boolean,
-    public val isMaximized: Boolean,
-    public val maximizable: Boolean,
     public val dragModifier: Modifier,
-    public val menuItems: List<DockMenuItem>,
-    /** Null when the dockable is not closable. */
-    public val onClose: (() -> Unit)?,
+    /**
+     * Header affordances supplied by the application via
+     * [com.seanproctor.docking.state.DockableSpec.trailingActions] - the overflow menu,
+     * a maximized indicator, a close button, or anything else it wants. Renderers place
+     * this at the trailing edge of the title bar; the library contributes nothing itself.
+     */
+    public val trailingActions: @Composable () -> Unit,
     /**
      * Per-dockable title-bar color overrides (ModernDocking's
      * `DockingHeaderUI.setBackgroundOverride`/`setForegroundOverride`). Null means the
@@ -78,11 +88,10 @@ public class DividerModel(
     public val dragModifier: Modifier,
 )
 
-/** The 13 docking handles: 5 window-root, 5 over the hovered dockable, 3 auto-hide pins. */
+/** The 10 docking handles: 5 window-root and 5 over the hovered dockable. */
 public enum class HandleKind {
     RootCenter, RootNorth, RootSouth, RootEast, RootWest,
     DockableCenter, DockableNorth, DockableSouth, DockableEast, DockableWest,
-    PinWest, PinEast, PinSouth,
 }
 
 @Stable
@@ -102,14 +111,4 @@ public enum class OverlayKind {
 @Stable
 public class DropOverlayModel(
     public val kind: OverlayKind,
-)
-
-@Stable
-public class AutoHideButtonModel(
-    public val id: DockableId,
-    public val title: String,
-    public val icon: Painter?,
-    public val side: AutoHideSide,
-    public val isPanelOpen: Boolean,
-    public val onClick: () -> Unit,
 )

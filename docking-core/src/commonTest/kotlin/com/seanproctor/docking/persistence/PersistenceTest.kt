@@ -1,7 +1,6 @@
 package com.seanproctor.docking.persistence
 
 import com.seanproctor.docking.layout.dockLayout
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
@@ -43,7 +42,6 @@ class DockLayoutBuilderTest {
                 dock("c", target = "b", region = DockRegion.Center)
                 display("b")
                 anchorAtRoot("tools", DockRegion.West, proportion = 0.2f)
-                autoHide("todo", AutoHideSide.South)
             }
             floatingWindow(WindowBounds(10f, 20f, 300f, 400f)) { dock("palette") }
         }
@@ -54,7 +52,6 @@ class DockLayoutBuilderTest {
         val tabs = assertNotNull(root.findTabsContaining(B))
         assertEquals(B, tabs.selectedTab.dockableId)
         assertNotNull(root.findAnchorNode(com.seanproctor.docking.model.AnchorId("tools")))
-        assertEquals(AutoHideSide.South, main.autoHide.sideOf(DockableId("todo")))
 
         val floating = layout.floatingWindows.single()
         assertEquals(WindowBounds(10f, 20f, 300f, 400f), floating.bounds)
@@ -80,7 +77,6 @@ class PersistenceRoundTripTest {
         state.dock(A)
         state.dock(B, DockTarget.OnDockable(A), DockRegion.East, 0.35f)
         state.dock(C, DockTarget.OnDockable(B), DockRegion.Center)
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.West)
         state.moveToNewWindow(C, WindowBounds(5f, 6f, 200f, 100f))
         return state
     }

@@ -10,7 +10,7 @@ import com.seanproctor.docking.spi.LocalDockingTheme
 /**
  * Installs the Material 3 docking renderer and a [DockingTheme] derived from the ambient
  * [MaterialTheme]. Wrap every docking surface (the main window's content and
- * `FloatingDockWindows`) in this — inside your `MaterialTheme`:
+ * `FloatingDockWindows`) in this - inside your `MaterialTheme`:
  *
  * ```
  * MaterialTheme(colorScheme) {

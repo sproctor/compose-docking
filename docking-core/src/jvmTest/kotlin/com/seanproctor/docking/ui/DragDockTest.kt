@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
@@ -38,7 +39,7 @@ class DragDockTest {
         setContent { DockArea(state, modifier = Modifier.fillMaxSize()) }
 
         val sourceBounds = onNodeWithText("Beta").fetchSemanticsNode().boundsInRoot
-        // Once B undocks at drag start, A expands to fill the window — target its
+        // Once B undocks at drag start, A expands to fill the window - target its
         // post-undock center (the window center), where A's Center handle sits.
         val rootBounds = onRoot().fetchSemanticsNode().boundsInRoot
         onNodeWithText("Beta").performMouseInput {
@@ -96,10 +97,10 @@ class DragDockTest {
         state.dock(B, DockTarget.OnDockable(A), DockRegion.Center)
         setContent { DockArea(state, modifier = Modifier.fillMaxSize()) }
 
-        val alphaBounds = onNodeWithText("Alpha").fetchSemanticsNode().boundsInRoot
-        val betaBounds = onNodeWithText("Beta").fetchSemanticsNode().boundsInRoot
+        val alphaBounds = onNodeWithTag("tab:a").fetchSemanticsNode().boundsInRoot
+        val betaBounds = onNodeWithTag("tab:b").fetchSemanticsNode().boundsInRoot
         // Drag Alpha horizontally past Beta within the strip.
-        onNodeWithText("Alpha").performMouseInput {
+        onNodeWithTag("tab:a").performMouseInput {
             moveTo(center)
             press()
             val startLocal = center

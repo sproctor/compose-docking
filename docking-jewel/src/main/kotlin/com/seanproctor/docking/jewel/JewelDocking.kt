@@ -10,7 +10,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 /**
  * Installs the Jewel (IntelliJ look-and-feel) docking renderer and a [DockingTheme]
  * derived from the ambient [JewelTheme]. Works under both the standalone `IntUiTheme`
- * and the IDE `SwingBridgeTheme` — this adapter only *reads* from [JewelTheme], never
+ * and the IDE `SwingBridgeTheme` - this adapter only *reads* from [JewelTheme], never
  * constructs one.
  *
  * ```

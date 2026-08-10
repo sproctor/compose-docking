@@ -1,7 +1,6 @@
 package com.seanproctor.docking.state
 
 import com.seanproctor.docking.model.AnchorId
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
@@ -144,47 +143,8 @@ class DockStateOperationsTest {
         assertIs<DockNode.Split>(state.layout.mainWindow.root)
     }
 
-    @Test
-    fun autoHidePicksAllowedSide() {
-        val state = testState(
-            options = mapOf(B to DockableOptions(autoHideStyle = DockingStyle.Horizontal)),
-        )
-        state.dock(A)
-        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
-        // Horizontal style only allows the South toolbar; requested West is overridden.
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.West)
-        assertTrue(state.isAutoHidden(B))
-        assertEquals(AutoHideSide.South, state.layout.mainWindow.autoHide.sideOf(B))
-    }
 
-    @Test
-    fun autoHideRoundTripKeepsSlideProportion() {
-        val state = testState()
-        state.dock(A)
-        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.East)
-        state.setAutoHideSlide(B, 0.4f)
-        state.setAutoHide(B, enabled = false)
-        assertFalse(state.isAutoHidden(B))
-        // Re-hide: remembered proportion is used.
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.East)
-        assertEquals(0.4f, state.layout.mainWindow.autoHide.east.single().slideProportion)
-    }
 
-    @Test
-    fun expandAutoHideIsPerWindowTransient() {
-        val state = testState()
-        state.dock(A)
-        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
-        state.setAutoHide(B, enabled = true, side = AutoHideSide.East)
-        state.expandAutoHide(WindowId.MAIN, B)
-        assertEquals(B, state.expandedAutoHide(WindowId.MAIN))
-        state.expandAutoHide(WindowId.MAIN, null)
-        assertNull(state.expandedAutoHide(WindowId.MAIN))
-        // Expanding a dockable that is not auto-hidden in that window is ignored.
-        state.expandAutoHide(WindowId.MAIN, A)
-        assertNull(state.expandedAutoHide(WindowId.MAIN))
-    }
 
     @Test
     fun showSelectsTabOfDockedDockable() {

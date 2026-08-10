@@ -8,7 +8,7 @@ import com.seanproctor.docking.model.NodeId
 /**
  * Per-window geometry registry, fed by `onGloballyPositioned` on every rendered node.
  * All rects are in the window composition's root coordinates. Feeds drag hit-testing,
- * tab-insertion indices, and auto-hide nearest-side picking. Docking trees are tens of
+ * and tab-insertion indices. Docking trees are tens of
  * nodes, so linear scans are fine.
  */
 public class DockBoundsRegistry internal constructor() {

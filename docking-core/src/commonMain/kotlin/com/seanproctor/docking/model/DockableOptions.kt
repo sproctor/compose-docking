@@ -19,10 +19,6 @@ public data class DockableOptions(
     val limitedToWindow: Boolean = false,
     /** Which split regions this dockable participates in (checked on both drag sides). */
     val dockingStyle: DockingStyle = DockingStyle.Both,
-    /** Which auto-hide toolbars this dockable may hide into. */
-    val autoHideStyle: DockingStyle = DockingStyle.Both,
-    /** Whether auto-hide is offered at all for this dockable. */
-    val autoHideAllowed: Boolean = true,
     /** Whether maximize is offered for this dockable. */
     val maximizable: Boolean = true,
     /** Tab strip placement preference when this dockable is in a tab group. */

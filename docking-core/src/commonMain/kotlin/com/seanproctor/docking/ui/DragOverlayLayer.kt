@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.drag.DragSession
 import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.drag.previewRectFor
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.spi.DropOverlayModel
 import com.seanproctor.docking.spi.HandleModel
 import com.seanproctor.docking.spi.LocalDockingRenderer
@@ -119,23 +118,13 @@ private fun DockAreaScope.overlayRectFor(session: DragSession): Pair<Rect, Overl
                 OverlayKind.TabCaret,
             )
         }
-        is DropTarget.Pin -> {
-            val root = bounds.rootBounds
-            val band = 24f * density
-            val rect = when (target.side) {
-                AutoHideSide.West -> Rect(root.left, root.top, root.left + band, root.bottom)
-                AutoHideSide.East -> Rect(root.right - band, root.top, root.right, root.bottom)
-                AutoHideSide.South -> Rect(root.left, root.bottom - band, root.right, root.bottom)
-            }
-            Pair(rect, OverlayKind.Area)
-        }
         is DropTarget.NewWindow, DropTarget.None -> null
     }
 }
 
 /**
  * The origin window's root listener: once a session is active, moves and the release are
- * handled here (initial pass, consuming) — the source node may be disposed by the drag's
+ * handled here (initial pass, consuming) - the source node may be disposed by the drag's
  * own layout reflow, but this root persists and keeps receiving the captured pointer.
  */
 internal fun Modifier.dragSessionRootListener(scope: DockAreaScope): Modifier = this

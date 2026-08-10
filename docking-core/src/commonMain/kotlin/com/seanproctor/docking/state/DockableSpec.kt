@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonElement
  * constant-return contract), per-dockable persisted state, and the content itself.
  *
  * Content state note: within a window, content keeps all its internal state when the
- * dockable is re-parented (tab ↔ split moves). Moves *between windows* restart the
+ * dockable is re-parented (tab <-> split moves). Moves *between windows* restart the
  * composition; state hoisted into `rememberSaveable` (or the app's own holders) survives
  * those too.
  */
@@ -36,7 +36,25 @@ public class DockableSpec(
     public val headerBackground: (@Composable () -> Color)? = null,
     public val headerForeground: (@Composable () -> Color)? = null,
     /**
-     * Close veto (ModernDocking's `requestClose`). May suspend — e.g. to show a
+     * Buttons for the trailing edge of this dockable's title bar. The library draws none
+     * of its own, so close/maximize/menu affordances live here; act on the [DockState]
+     * the dockable is registered with.
+     */
+    public val trailingActions: @Composable () -> Unit = {},
+    /**
+     * Affordances for this dockable's tab when it is in a tab group - typically a close
+     * button. Separate from [trailingActions] because a tab wants far less than a title
+     * bar does, and because the app decides whether tabs get a close button at all.
+     */
+    public val tabActions: @Composable () -> Unit = {},
+    /**
+     * Affordances for the trailing edge of the tab strip when this dockable is the
+     * selected tab. Separate from [trailingActions] so an app can show them in a tab
+     * group without also changing what a plain title bar shows.
+     */
+    public val tabStripActions: @Composable () -> Unit = {},
+    /**
+     * Close veto (ModernDocking's `requestClose`). May suspend - e.g. to show a
      * confirmation dialog. Return false to keep the dockable open.
      */
     public val canClose: suspend () -> Boolean = { true },

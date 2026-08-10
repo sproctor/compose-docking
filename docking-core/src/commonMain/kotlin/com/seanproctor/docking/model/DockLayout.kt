@@ -16,53 +16,6 @@ public data class WindowBounds(
     val height: Float,
 )
 
-/** A dockable currently hidden into an auto-hide toolbar. */
-@Immutable
-public data class AutoHideEntry(
-    val dockableId: DockableId,
-    /** Fraction of the content area the slide-out panel occupies, in `0..1`. */
-    val slideProportion: Float = DEFAULT_SLIDE_PROPORTION,
-) {
-    public companion object {
-        public const val DEFAULT_SLIDE_PROPORTION: Float = 0.25f
-    }
-}
-
-/** The auto-hide toolbars of one window. There is no North toolbar. */
-@Immutable
-public data class AutoHideState(
-    val west: List<AutoHideEntry> = emptyList(),
-    val east: List<AutoHideEntry> = emptyList(),
-    val south: List<AutoHideEntry> = emptyList(),
-) {
-    public operator fun get(side: AutoHideSide): List<AutoHideEntry> = when (side) {
-        AutoHideSide.West -> west
-        AutoHideSide.East -> east
-        AutoHideSide.South -> south
-    }
-
-    public fun with(side: AutoHideSide, entries: List<AutoHideEntry>): AutoHideState = when (side) {
-        AutoHideSide.West -> copy(west = entries)
-        AutoHideSide.East -> copy(east = entries)
-        AutoHideSide.South -> copy(south = entries)
-    }
-
-    public val allEntries: List<AutoHideEntry> get() = west + east + south
-
-    public fun sideOf(dockableId: DockableId): AutoHideSide? = when {
-        west.any { it.dockableId == dockableId } -> AutoHideSide.West
-        east.any { it.dockableId == dockableId } -> AutoHideSide.East
-        south.any { it.dockableId == dockableId } -> AutoHideSide.South
-        else -> null
-    }
-
-    public fun isEmpty(): Boolean = west.isEmpty() && east.isEmpty() && south.isEmpty()
-
-    public companion object {
-        public val Empty: AutoHideState = AutoHideState()
-    }
-}
-
 /**
  * A maximized dockable in a window. The pre-maximize tree is stored in [savedRoot], so
  * restoring is a pure value swap and the maximized state survives persistence.
@@ -82,7 +35,6 @@ public data class DockWindow(
     val id: WindowId,
     val kind: WindowKind,
     val root: DockNode?,
-    val autoHide: AutoHideState = AutoHideState.Empty,
     val maximized: MaximizedState? = null,
     val bounds: WindowBounds? = null,
 )

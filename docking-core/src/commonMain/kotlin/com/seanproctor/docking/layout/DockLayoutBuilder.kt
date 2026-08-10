@@ -1,9 +1,6 @@
 package com.seanproctor.docking.layout
 
 import com.seanproctor.docking.model.AnchorId
-import com.seanproctor.docking.model.AutoHideEntry
-import com.seanproctor.docking.model.AutoHideSide
-import com.seanproctor.docking.model.AutoHideState
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -34,7 +31,6 @@ import com.seanproctor.docking.tree.splitWithNode
  *         dock("terminal", target = "editor", region = DockRegion.South, proportion = 0.3f)
  *         dock("problems", target = "terminal", region = DockRegion.Center)
  *         display("terminal")
- *         autoHide("todo", AutoHideSide.South)
  *     }
  *     floatingWindow(WindowBounds(100f, 100f, 400f, 600f)) { dock("palette") }
  * }
@@ -82,7 +78,6 @@ public class DockWindowBuilder internal constructor(
     private val bounds: WindowBounds?,
 ) {
     private var root: DockNode? = null
-    private var autoHide = AutoHideState.Empty
 
     /** Docks [id] at the window root. [proportion] is the new dockable's share. */
     public fun dock(id: String, region: DockRegion = DockRegion.Center, proportion: Float = 0.25f) {
@@ -115,18 +110,6 @@ public class DockWindowBuilder internal constructor(
         } ?: anchorNode
     }
 
-    /** Puts [id] into the [side] auto-hide toolbar. */
-    public fun autoHide(
-        id: String,
-        side: AutoHideSide,
-        slideProportion: Float = AutoHideEntry.DEFAULT_SLIDE_PROPORTION,
-    ) {
-        autoHide = autoHide.with(
-            side,
-            autoHide[side] + AutoHideEntry(DockableId(id), slideProportion),
-        )
-    }
-
     /** Selects the tab containing [id] in its tab group. */
     public fun display(id: String) {
         val currentRoot = root ?: return
@@ -136,5 +119,5 @@ public class DockWindowBuilder internal constructor(
     }
 
     internal fun build(): DockWindow =
-        DockWindow(windowId, kind, root, autoHide, maximized = null, bounds = bounds)
+        DockWindow(windowId, kind, root, maximized = null, bounds = bounds)
 }

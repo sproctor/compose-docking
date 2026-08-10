@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -38,7 +39,7 @@ import kotlin.math.roundToInt
 
 /**
  * Plain, dependency-free renderer used as the default when no design-system adapter is
- * installed. Functional but deliberately unstyled — wrap content in `Material3Docking`
+ * installed. Functional but deliberately unstyled - wrap content in `Material3Docking`
  * or `JewelDocking` for a real look.
  */
 public object DebugDockingRenderer : DockingRenderer {
@@ -56,6 +57,9 @@ public object DebugDockingRenderer : DockingRenderer {
                 if (model.dropInsertionIndex == index) TabCaret()
                 Row(
                     modifier = Modifier
+                        // A dockable's title appears both here and in its header, so tests
+                        // need a way to address the tab specifically.
+                        .testTag("tab:" + tab.id.value)
                         .offset { IntOffset(tab.reorderOffsetX.roundToInt(), 0) }
                         .then(tab.dragModifier)
                         .background(if (tab.isSelected) theme.headerBackground else Color.Transparent)
@@ -63,28 +67,12 @@ public object DebugDockingRenderer : DockingRenderer {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     BasicText(tab.title, style = textStyle(theme.headerForeground))
-                    if (tab.onClose != null) {
-                        BasicText(
-                            "×",
-                            style = textStyle(theme.headerForeground),
-                            modifier = Modifier
-                                .padding(start = 6.dp)
-                                .clickable { tab.onClose.invoke() },
-                        )
-                    }
+                    tab.actions()
                 }
             }
             if (model.dropInsertionIndex == model.tabs.size) TabCaret()
             Box(Modifier.weight(1f).fillMaxHeight().then(model.gutterDragModifier))
-            if (model.trailingMenuItems.isNotEmpty()) {
-                MenuHost(model.trailingMenuItems) { open ->
-                    BasicText(
-                        "⋮",
-                        style = textStyle(theme.headerForeground),
-                        modifier = Modifier.clickable(onClick = open).padding(6.dp),
-                    )
-                }
-            }
+            model.trailingActions()
         }
     }
 
@@ -110,26 +98,11 @@ public object DebugDockingRenderer : DockingRenderer {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(
-                model.title + if (model.isMaximized) "  ⛶" else "",
+                model.title,
                 style = textStyle(foreground),
                 modifier = Modifier.padding(horizontal = 8.dp).weight(1f),
             )
-            if (model.menuItems.isNotEmpty()) {
-                MenuHost(model.menuItems) { open ->
-                    BasicText(
-                        "⋮",
-                        style = textStyle(foreground),
-                        modifier = Modifier.clickable(onClick = open).padding(6.dp),
-                    )
-                }
-            }
-            if (model.onClose != null) {
-                BasicText(
-                    "×",
-                    style = textStyle(foreground),
-                    modifier = Modifier.clickable { model.onClose.invoke() }.padding(6.dp),
-                )
-            }
+            model.trailingActions()
         }
     }
 
@@ -176,17 +149,17 @@ public object DebugDockingRenderer : DockingRenderer {
                     topLeft = Offset(inset, inset),
                     size = androidx.compose.ui.geometry.Size(size.width - 2 * inset, barThickness),
                 )
-                HandleKind.RootSouth, HandleKind.DockableSouth, HandleKind.PinSouth -> drawRect(
+                HandleKind.RootSouth, HandleKind.DockableSouth -> drawRect(
                     color = fg,
                     topLeft = Offset(inset, size.height - inset - barThickness),
                     size = androidx.compose.ui.geometry.Size(size.width - 2 * inset, barThickness),
                 )
-                HandleKind.RootWest, HandleKind.DockableWest, HandleKind.PinWest -> drawRect(
+                HandleKind.RootWest, HandleKind.DockableWest -> drawRect(
                     color = fg,
                     topLeft = Offset(inset, inset),
                     size = androidx.compose.ui.geometry.Size(barThickness, size.height - 2 * inset),
                 )
-                HandleKind.RootEast, HandleKind.DockableEast, HandleKind.PinEast -> drawRect(
+                HandleKind.RootEast, HandleKind.DockableEast -> drawRect(
                     color = fg,
                     topLeft = Offset(size.width - inset - barThickness, inset),
                     size = androidx.compose.ui.geometry.Size(barThickness, size.height - 2 * inset),
@@ -203,89 +176,6 @@ public object DebugDockingRenderer : DockingRenderer {
             OverlayKind.TabCaret -> theme.activeHighlightBorder
         }
         Box(modifier.background(color))
-    }
-
-    @Composable
-    override fun AutoHideButton(model: AutoHideButtonModel, modifier: Modifier) {
-        val theme = LocalDockingTheme.current
-        Box(
-            modifier
-                .clickable(onClick = model.onClick)
-                .background(if (model.isPanelOpen) theme.headerBackground else Color.Transparent)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            BasicText(model.title, style = textStyle(theme.headerForeground))
-        }
-    }
-
-    @Composable
-    override fun MenuHost(
-        items: List<DockMenuItem>,
-        anchor: @Composable (openMenu: () -> Unit) -> Unit,
-    ) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            anchor { expanded = true }
-            if (expanded) {
-                Popup(onDismissRequest = { expanded = false }) {
-                    val theme = LocalDockingTheme.current
-                    Column(
-                        Modifier
-                            .background(theme.headerBackground)
-                            .border(1.dp, theme.handleOutline)
-                            .padding(vertical = 4.dp),
-                    ) {
-                        MenuItems(items, indent = 0) { expanded = false }
-                    }
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun MenuItems(items: List<DockMenuItem>, indent: Int, dismiss: () -> Unit) {
-        val theme = LocalDockingTheme.current
-        for (item in items) {
-            when (item) {
-                is DockMenuItem.Action -> BasicText(
-                    (if (item.selected) "✓ " else "") + item.label,
-                    style = textStyle(
-                        theme.headerForeground.copy(alpha = if (item.enabled) 1f else 0.4f),
-                    ),
-                    modifier = Modifier
-                        .clickable(enabled = item.enabled) {
-                            dismiss()
-                            item.onClick()
-                        }
-                        .padding(
-                            start = (12 + indent * 16).dp,
-                            end = 12.dp,
-                            top = 4.dp,
-                            bottom = 4.dp,
-                        ),
-                )
-                is DockMenuItem.SubMenu -> {
-                    BasicText(
-                        item.label,
-                        style = textStyle(theme.headerForeground.copy(alpha = 0.6f)),
-                        modifier = Modifier.padding(
-                            start = (12 + indent * 16).dp,
-                            end = 12.dp,
-                            top = 4.dp,
-                            bottom = 2.dp,
-                        ),
-                    )
-                    MenuItems(item.items, indent + 1, dismiss)
-                }
-                DockMenuItem.Separator -> Box(
-                    Modifier
-                        .padding(vertical = 3.dp)
-                        .height(1.dp)
-                        .width(120.dp)
-                        .background(theme.handleOutline),
-                )
-            }
-        }
     }
 
     @Composable

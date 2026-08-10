@@ -53,7 +53,7 @@ public interface FloatingWindowScope : FrameWindowScope {
  * ```
  *
  * Windows are decorated by default (free OS move/resize/snap). Supplying [chrome] makes
- * them undecorated with your composable as the frame — e.g. Jewel's `DecoratedWindow`.
+ * them undecorated with your composable as the frame - e.g. Jewel's `DecoratedWindow`.
  * Empty floating windows are garbage-collected by the core; their `Window` simply leaves
  * the composition.
  */
@@ -161,7 +161,7 @@ private fun WindowBounds.approximately(other: WindowBounds?): Boolean =
         abs(width - other.width) < 1f && abs(height - other.height) < 1f
 
 /**
- * The undecorated always-on-top window following the pointer during a drag —
+ * The undecorated always-on-top window following the pointer during a drag -
  * ModernDocking's TempFloatingFrame. Replaces the in-window ghost card.
  */
 @Composable

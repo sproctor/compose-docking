@@ -66,8 +66,8 @@ internal fun desktopIntegration(state: DockState): DesktopDockingIntegration =
 
 /**
  * Connects the surrounding OS window to the docking system: screen-coordinate
- * conversion for cross-window drags, z-order drop resolution, and auto-hide collapse on
- * focus loss. Call once inside every `Window` that hosts a [com.seanproctor.docking.ui.DockArea] —
+ * conversion for cross-window drags and z-order drop resolution on
+ * focus loss. Call once inside every `Window` that hosts a [com.seanproctor.docking.ui.DockArea] -
  * the main window in your own `Window` block; floating windows get it automatically from
  * [FloatingDockWindows].
  */
@@ -98,15 +98,7 @@ public fun FrameWindowScope.registerDockingWindow(
                 }.getOrDefault(screen)
             },
         )
-        val focusListener = object : WindowAdapter() {
-            override fun windowLostFocus(e: WindowEvent?) {
-                // ModernDocking collapses slide-out panels when the window deactivates.
-                state.expandAutoHide(windowId, null)
-            }
-        }
-        window.addWindowFocusListener(focusListener)
         onDispose {
-            window.removeWindowFocusListener(focusListener)
             state.dragController.clearScreenConverter(windowId)
             integration.awtWindows.remove(windowId)
             integration.densities.remove(windowId)

@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -19,8 +18,6 @@ import com.seanproctor.docking.tree.DockablePlacement
 import com.seanproctor.docking.tree.TreeContext
 import com.seanproctor.docking.tree.addFloatingWindow
 import com.seanproctor.docking.tree.allowsRegion
-import com.seanproctor.docking.tree.autoHideInLayout
-import com.seanproctor.docking.tree.autoShowInLayout
 import com.seanproctor.docking.tree.closeWindowInLayout
 import com.seanproctor.docking.tree.containsDockable
 import com.seanproctor.docking.tree.dockIntoAnchorInLayout
@@ -36,7 +33,6 @@ import com.seanproctor.docking.tree.insertTabAt
 import com.seanproctor.docking.tree.restoreMaximizeInLayout
 import com.seanproctor.docking.tree.restoredFromMaximize
 import com.seanproctor.docking.tree.selectTab
-import com.seanproctor.docking.tree.setSlideProportionInLayout
 import com.seanproctor.docking.tree.setSplitProportion
 import com.seanproctor.docking.tree.setWindowBoundsInLayout
 import com.seanproctor.docking.tree.undockFromLayout
@@ -90,11 +86,6 @@ public class DockState(
     /** The dockable with input focus, for the active highlighter. Set by focus/press listeners. */
     public var activeDockable: DockableId? by mutableStateOf(null)
 
-    private val expandedAutoHide = mutableStateMapOf<WindowId, DockableId>()
-
-    /** Remembers slide proportions across hide/show cycles within this session. */
-    private val autoHideProportions = mutableMapOf<DockableId, Float>()
-
     // ----- Queries -----
 
     /** Docked in a window tree (including behind a maximized sibling); not auto-hidden. */
@@ -103,9 +94,6 @@ public class DockState(
             it == DockablePlacement.Docked || it == DockablePlacement.BehindMaximize
         }
 
-    public fun isAutoHidden(id: DockableId): Boolean =
-        layout.windowContaining(id)?.placementOf(id) == DockablePlacement.AutoHidden
-
     /** Docked, auto-hidden, or maximized anywhere in the layout. */
     public fun isOpen(id: DockableId): Boolean = layout.windowContaining(id) != null
 
@@ -113,9 +101,6 @@ public class DockState(
         layout.windows.any { it.maximized?.dockableId == id }
 
     public fun windowOf(id: DockableId): WindowId? = layout.windowContaining(id)?.id
-
-    /** The currently slid-out auto-hide dockable of a window, if any. */
-    public fun expandedAutoHide(windowId: WindowId): DockableId? = expandedAutoHide[windowId]
 
     /**
      * Whether docking [dockableId] at [target]/[region] is legal: bidirectional
@@ -180,7 +165,7 @@ public class DockState(
             closed += result.closedWindows
         }
         val docked = applyDockTarget(ctx, working, dockableId, target, region, proportion)
-            ?: return // target vanished — abort atomically, nothing changed
+            ?: return // target vanished - abort atomically, nothing changed
         layout = docked
         if (wasOpen) emit(DockingEvent.Undocked(dockableId, isTemporary = true))
         closed.forEach { emit(DockingEvent.WindowClosed(it)) }
@@ -192,7 +177,6 @@ public class DockState(
         if (!isOpen(dockableId)) return
         val result = treeContext().undockFromLayout(layout, dockableId)
         layout = result.layout
-        collapseExpanded(dockableId)
         emit(DockingEvent.Undocked(dockableId))
         result.closedWindows.forEach { emit(DockingEvent.WindowClosed(it)) }
     }
@@ -253,47 +237,6 @@ public class DockState(
         }
     }
 
-    /**
-     * Enables or disables auto-hide for [dockableId]. When [side] is null the first side
-     * permitted by the dockable's `autoHideStyle` is used (the UI layer passes the
-     * nearest side explicitly when it has geometry).
-     */
-    public fun setAutoHide(dockableId: DockableId, enabled: Boolean, side: AutoHideSide? = null) {
-        if (enabled) {
-            if (isAutoHidden(dockableId)) return
-            val options = registry.optionsOf(dockableId)
-            if (!options.autoHideAllowed) return
-            val allowed = allowedAutoHideSides(options.autoHideStyle)
-            val chosen = side?.takeIf { it in allowed } ?: allowed.firstOrNull() ?: return
-            val proportion = autoHideProportions[dockableId]
-                ?: com.seanproctor.docking.model.AutoHideEntry.DEFAULT_SLIDE_PROPORTION
-            val result = treeContext().autoHideInLayout(layout, dockableId, chosen, proportion)
-            if (result.layout == layout) return
-            layout = result.layout
-            emit(DockingEvent.AutoHideChanged(dockableId, enabled = true, side = chosen))
-        } else {
-            if (!isAutoHidden(dockableId)) return
-            collapseExpanded(dockableId)
-            layout = treeContext().autoShowInLayout(layout, dockableId)
-            emit(DockingEvent.AutoHideChanged(dockableId, enabled = false, side = null))
-        }
-    }
-
-    /** Slides an auto-hidden dockable out (or collapses with null). One per window. */
-    public fun expandAutoHide(windowId: WindowId, dockableId: DockableId?) {
-        if (dockableId == null) {
-            expandedAutoHide.remove(windowId)
-        } else if (layout.window(windowId)?.autoHide?.sideOf(dockableId) != null) {
-            expandedAutoHide[windowId] = dockableId
-        }
-    }
-
-    /** Updates the persisted slide-out size of an auto-hidden dockable. */
-    public fun setAutoHideSlide(dockableId: DockableId, proportion: Float) {
-        autoHideProportions[dockableId] = proportion
-        layout = setSlideProportionInLayout(layout, dockableId, proportion)
-    }
-
     /** Selects tab [index] of the tab group [nodeId], emitting Shown/Hidden events. */
     public fun selectTab(nodeId: NodeId, index: Int) {
         transformTrees(
@@ -328,14 +271,11 @@ public class DockState(
     }
 
     /**
-     * Brings [dockableId] to the user's attention: slides it out if auto-hidden, selects
-     * its tab if docked, docks it if closed (into its anchor when it has one).
+     * Brings [dockableId] to the user's attention: selects its tab if docked, docks it if
+     * closed (into its anchor when it has one).
      */
     public fun show(dockableId: DockableId) {
         when {
-            isAutoHidden(dockableId) -> {
-                windowOf(dockableId)?.let { expandAutoHide(it, dockableId) }
-            }
             isDocked(dockableId) -> {
                 val window = layout.windowContaining(dockableId) ?: return
                 if (window.maximized != null && window.maximized.dockableId != dockableId) {
@@ -371,7 +311,6 @@ public class DockState(
         val result = closeWindowInLayout(layout, windowId)
         if (result.closedWindows.isEmpty()) return
         layout = result.layout
-        expandedAutoHide.remove(windowId)
         result.closedWindows.forEach { emit(DockingEvent.WindowClosed(it)) }
     }
 
@@ -382,26 +321,8 @@ public class DockState(
         if (!isOpen(dockableId)) return
         val result = treeContext().undockFromLayout(layout, dockableId)
         layout = result.layout
-        collapseExpanded(dockableId)
         emit(DockingEvent.Undocked(dockableId, isTemporary = true))
         result.closedWindows.forEach { emit(DockingEvent.WindowClosed(it)) }
-    }
-
-    /** Puts a currently-closed dockable straight into a window's auto-hide toolbar (pin-handle drop). */
-    internal fun autoHideInto(dockableId: DockableId, windowId: WindowId, side: AutoHideSide) {
-        if (isOpen(dockableId)) return
-        val window = layout.window(windowId) ?: return
-        val proportion = autoHideProportions[dockableId]
-            ?: com.seanproctor.docking.model.AutoHideEntry.DEFAULT_SLIDE_PROPORTION
-        layout = layout.replaceWindow(
-            window.copy(
-                autoHide = window.autoHide.with(
-                    side,
-                    window.autoHide[side] + com.seanproctor.docking.model.AutoHideEntry(dockableId, proportion),
-                ),
-            ),
-        )
-        emit(DockingEvent.AutoHideChanged(dockableId, enabled = true, side = side))
     }
 
     /** Docks a currently-closed dockable into a tab group at a specific index (strip drop). */
@@ -440,11 +361,6 @@ public class DockState(
         }
     }
 
-    private fun collapseExpanded(dockableId: DockableId) {
-        expandedAutoHide.entries.firstOrNull { it.value == dockableId }
-            ?.let { expandedAutoHide.remove(it.key) }
-    }
-
     private fun applyDockTarget(
         ctx: TreeContext,
         working: DockLayout,
@@ -479,16 +395,6 @@ public class DockState(
                         ctx.dockIntoLayout(working, dockableId, main.id, null, DockRegion.East, 0.25f)
                     }
                 }
-    }
-
-    private fun allowedAutoHideSides(style: DockingStyle): List<AutoHideSide> = buildList {
-        if (style == DockingStyle.Vertical || style == DockingStyle.Both) {
-            add(AutoHideSide.West)
-            add(AutoHideSide.East)
-        }
-        if (style == DockingStyle.Horizontal || style == DockingStyle.Both) {
-            add(AutoHideSide.South)
-        }
     }
 
     /**

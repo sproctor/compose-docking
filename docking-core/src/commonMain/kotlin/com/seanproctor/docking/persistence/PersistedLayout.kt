@@ -1,8 +1,6 @@
 package com.seanproctor.docking.persistence
 
 import com.seanproctor.docking.model.AnchorId
-import com.seanproctor.docking.model.AutoHideEntry
-import com.seanproctor.docking.model.AutoHideState
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockWindow
@@ -42,15 +40,6 @@ public data class PersistedWindow(
     val root: PersistedNode? = null,
     val maximizedDockable: String? = null,
     val maximizedSavedRoot: PersistedNode? = null,
-    val autoHideWest: List<PersistedAutoHideEntry> = emptyList(),
-    val autoHideEast: List<PersistedAutoHideEntry> = emptyList(),
-    val autoHideSouth: List<PersistedAutoHideEntry> = emptyList(),
-)
-
-@Serializable
-public data class PersistedAutoHideEntry(
-    val dockableId: String,
-    val slideProportion: Float = AutoHideEntry.DEFAULT_SLIDE_PROPORTION,
 )
 
 @Serializable
@@ -108,13 +97,7 @@ private fun DockWindow.toPersisted(
     root = root?.toPersisted(propertiesOf),
     maximizedDockable = maximized?.dockableId?.value,
     maximizedSavedRoot = maximized?.savedRoot?.toPersisted(propertiesOf),
-    autoHideWest = autoHide.west.map { it.toPersisted() },
-    autoHideEast = autoHide.east.map { it.toPersisted() },
-    autoHideSouth = autoHide.south.map { it.toPersisted() },
 )
-
-private fun AutoHideEntry.toPersisted() =
-    PersistedAutoHideEntry(dockableId.value, slideProportion)
 
 private fun DockNode.toPersisted(
     propertiesOf: (DockableId) -> JsonElement?,
@@ -151,11 +134,6 @@ private fun PersistedWindow.toRuntime(): DockWindow {
         id = WindowId(id),
         kind = if (kind == "main") WindowKind.Main else WindowKind.Floating,
         root = root?.toRuntime(),
-        autoHide = AutoHideState(
-            west = autoHideWest.map { it.toRuntime() },
-            east = autoHideEast.map { it.toRuntime() },
-            south = autoHideSouth.map { it.toRuntime() },
-        ),
         maximized = if (maximizedDockable != null && savedRoot != null) {
             MaximizedState(DockableId(maximizedDockable), savedRoot)
         } else {
@@ -164,9 +142,6 @@ private fun PersistedWindow.toRuntime(): DockWindow {
         bounds = bounds,
     )
 }
-
-private fun PersistedAutoHideEntry.toRuntime() =
-    AutoHideEntry(DockableId(dockableId), slideProportion)
 
 private fun PersistedNode.toRuntime(): DockNode = when (this) {
     is PersistedNode.Leaf -> DockNode.Leaf(NodeId(nodeId), DockableId(dockableId))
@@ -203,10 +178,6 @@ internal fun PersistedApplicationLayout.referencedDockables(): Map<DockableId, J
     for (window in windows) {
         visit(window.root)
         visit(window.maximizedSavedRoot)
-        for (entry in window.autoHideWest + window.autoHideEast + window.autoHideSouth) {
-            val id = DockableId(entry.dockableId)
-            if (id !in result) result[id] = null
-        }
     }
     return result
 }

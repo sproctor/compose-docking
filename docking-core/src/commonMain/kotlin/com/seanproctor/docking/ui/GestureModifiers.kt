@@ -26,10 +26,10 @@ import com.seanproctor.docking.state.DockState
 /**
  * Core-built gesture modifiers embedded into renderer models.
  *
- * Selection/activation fire on press (IDE behavior — no double-tap-timeout latency); a
+ * Selection/activation fire on press (IDE behavior - no double-tap-timeout latency); a
  * quick second press toggles maximize; movement past touch slop starts a drag session
  * (tabs first enter in-strip reordering, escalating to a full drag on leaving the strip).
- * Once a session starts, the origin window's root listener owns move/release handling —
+ * Once a session starts, the origin window's root listener owns move/release handling -
  * the source node may be disposed by the drag's own undock at any time.
  */
 
@@ -41,7 +41,7 @@ private fun DockState.toggleMaximizeIfAllowed(id: DockableId) {
  * Per-window double-click detection. Tracking the last-clicked target globally (rather
  * than per gesture handler) is what makes a double click require two *consecutive*
  * clicks on the same element: rapidly clicking tab A, tab B, tab A again must select
- * tabs, not maximize A — B's click breaks A's sequence.
+ * tabs, not maximize A - B's click breaks A's sequence.
  */
 internal class ClickTracker {
     private var lastTarget: Any? = null

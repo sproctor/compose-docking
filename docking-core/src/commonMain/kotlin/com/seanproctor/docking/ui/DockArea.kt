@@ -1,6 +1,5 @@
 package com.seanproctor.docking.ui
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -19,6 +18,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -49,13 +49,17 @@ import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockableSpec
 import kotlinx.coroutines.launch
 
-private val DividerThickness = 6.dp
+/**
+ * Thickness of a split divider: its hit area, and the room a renderer has to draw a drag
+ * handle. Wide enough to leave some space around the handle rather than hugging it.
+ */
+internal val DividerThickness = 8.dp
 
 /**
  * Renders one window's docking layout: the tree of splits, tab groups and dockables,
- * auto-hide toolbars, the slide-out layer, and (during drags) the docking overlay.
+ * plus (during drags) the docking overlay.
  *
- * Call once per window — the main window and each floating window — with that window's
+ * Call once per window - the main window and each floating window - with that window's
  * [windowId]. Dockable content and metadata come from [DockState.registry].
  */
 @Composable
@@ -75,27 +79,16 @@ public fun DockArea(
     Box(
         modifier
             .onGloballyPositioned { scope.bounds.rootBounds = it.boundsInRoot() }
-            .autoHideDismissListener(scope)
             .dragSessionRootListener(scope),
     ) {
-        Row(Modifier.fillMaxSize()) {
-            scope.AutoHideToolbarStrip(window, com.seanproctor.docking.model.AutoHideSide.West)
-            Column(Modifier.weight(1f).fillMaxHeight()) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    val root = window.root
-                    if (root == null) {
-                        renderer.EmptyRootPlaceholder(Modifier.fillMaxSize())
-                    } else {
-                        key(root.id) {
-                            scope.RenderNode(root, Modifier.fillMaxSize())
-                        }
-                    }
-                }
-                scope.AutoHideToolbarStrip(window, com.seanproctor.docking.model.AutoHideSide.South)
+        val root = window.root
+        if (root == null) {
+            renderer.EmptyRootPlaceholder(Modifier.fillMaxSize())
+        } else {
+            key(root.id) {
+                scope.RenderNode(root, Modifier.fillMaxSize())
             }
-            scope.AutoHideToolbarStrip(window, com.seanproctor.docking.model.AutoHideSide.East)
         }
-        scope.AutoHideSlideOutLayer(window, Modifier.fillMaxSize())
         scope.DragOverlayLayer(Modifier.fillMaxSize())
     }
 }
@@ -131,11 +124,12 @@ internal fun DockAreaScope.RenderLeaf(
     NodeBoundsEffect(leaf.id)
     DockableBoundsEffect(leaf.dockableId)
     Column(
-        modifier.onGloballyPositioned {
-            val rect = it.boundsInRoot()
-            bounds.updateNode(leaf.id, rect)
-            bounds.updateDockable(leaf.dockableId, rect)
-        },
+        modifier
+            .onGloballyPositioned {
+                val rect = it.boundsInRoot()
+                bounds.updateNode(leaf.id, rect)
+                bounds.updateDockable(leaf.dockableId, rect)
+            },
     ) {
         if (spec == null) {
             renderer.MissingDockable(leaf.dockableId, Modifier.weight(1f).fillMaxWidth())
@@ -148,24 +142,18 @@ internal fun DockAreaScope.RenderLeaf(
     }
 }
 
-/** The content area of a dockable: active-highlight border + focus tracking + content. */
+/**
+ * The content area of a dockable: clipping + focus tracking + content.
+ *
+ * Content is clipped to its pane. A dockable can be resized to any size by a divider
+ * drag, and content that does not fit would otherwise paint over its neighbours -
+ * a panel's drawing must never escape the space the layout gave it.
+ */
 @Composable
 internal fun DockAreaScope.DockableContentBox(id: DockableId, modifier: Modifier) {
-    val theme = LocalDockingTheme.current
-    val highlight = state.settings.activeHighlighterEnabled
-    val isActive = highlight && state.activeDockable == id
     Box(
         modifier
-            .then(
-                if (highlight) {
-                    Modifier.border(
-                        1.dp,
-                        if (isActive) theme.activeHighlightBorder else theme.inactiveHighlightBorder,
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .clipToBounds()
             .onFocusChanged { if (it.hasFocus) state.activeDockable = id }
             .pointerInput(id) {
                 awaitPointerEventScope {
@@ -202,6 +190,12 @@ internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
         }
         if (placement == TabPlacement.Top) strip()
         val spec = state.registry[selected.dockableId]
+        // ModernDocking's DisplayPanel rule: a tabbed dockable keeps its title bar unless
+        // the tabs are on top (where the tab itself reads as the title) or the layout is
+        // in always-display-tabs mode (where the strip carries the affordances instead).
+        if (spec != null && placement == TabPlacement.Bottom && !state.settings.alwaysDisplayTabs) {
+            renderer.DockableHeader(buildHeaderModel(spec), Modifier.fillMaxWidth())
+        }
         DockableBoundsEffect(selected.dockableId)
         Box(
             Modifier
@@ -238,7 +232,6 @@ private fun DockAreaScope.buildTabStripModel(
     node: DockNode.Tabs,
     placement: TabPlacement,
 ): TabStripModel {
-    val coroutineScope = rememberCoroutineScope()
     val tabs = node.tabs.mapIndexed { index, tab ->
         val spec = state.registry[tab.dockableId]
         TabItemModel(
@@ -248,11 +241,7 @@ private fun DockAreaScope.buildTabStripModel(
             tooltip = spec?.tooltip?.invoke(),
             isSelected = index == node.selectedIndex,
             onSelect = { state.selectTab(node.id, index) },
-            onClose = if (spec == null || spec.options.closable) {
-                { coroutineScope.launch { state.close(tab.dockableId) } }
-            } else {
-                null
-            },
+            actions = spec?.tabActions ?: {},
             dragModifier = tabGestureModifier(node, tab.dockableId, index),
             reorderOffsetX = tabReorderOffset(node.id, tab.dockableId),
         )
@@ -261,7 +250,7 @@ private fun DockAreaScope.buildTabStripModel(
         tabs = tabs,
         selectedIndex = node.selectedIndex,
         placement = placement,
-        trailingMenuItems = buildDockableMenuItems(state, selectedDockableOf(node)),
+        trailingActions = state.registry[selectedDockableOf(node)]?.tabStripActions ?: {},
         gutterDragModifier = gutterGestureModifier(node),
         dropInsertionIndex = tabDropInsertionIndex(node.id),
     )
@@ -272,26 +261,16 @@ private fun selectedDockableOf(node: DockNode.Tabs): DockableId = node.selectedT
 // ----- Header -----
 
 @Composable
-internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel {
-    val coroutineScope = rememberCoroutineScope()
-    return HeaderModel(
-        id = spec.id,
-        title = spec.title(),
-        icon = spec.icon?.invoke(),
-        isActive = state.activeDockable == spec.id,
-        isMaximized = state.isMaximized(spec.id),
-        maximizable = spec.options.maximizable,
-        dragModifier = headerGestureModifier(spec.id),
-        menuItems = buildDockableMenuItems(state, spec.id),
-        background = spec.headerBackground?.invoke(),
-        foreground = spec.headerForeground?.invoke(),
-        onClose = if (spec.options.closable) {
-            { coroutineScope.launch { state.close(spec.id) } }
-        } else {
-            null
-        },
-    )
-}
+internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel = HeaderModel(
+    id = spec.id,
+    title = spec.title(),
+    icon = spec.icon?.invoke(),
+    isActive = state.activeDockable == spec.id,
+    dragModifier = headerGestureModifier(spec.id),
+    trailingActions = spec.trailingActions,
+    background = spec.headerBackground?.invoke(),
+    foreground = spec.headerForeground?.invoke(),
+)
 
 // ----- Splits -----
 

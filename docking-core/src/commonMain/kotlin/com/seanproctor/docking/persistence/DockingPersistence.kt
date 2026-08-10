@@ -28,7 +28,7 @@ public object DockingPersistence {
 
     /**
      * Decodes a persisted layout, running [migrations] for any versions older than
-     * [PersistedApplicationLayout.CURRENT_LAYOUT_VERSION]. Throws on malformed input —
+     * [PersistedApplicationLayout.CURRENT_LAYOUT_VERSION]. Throws on malformed input -
      * callers decide whether to fall back to a default layout.
      */
     public fun decode(

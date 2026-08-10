@@ -14,5 +14,6 @@ dependencies {
     api(project(":docking-core"))
     api(libs.jewel.int.ui.standalone)
     api(libs.jewel.int.ui.decorated.window)
+    implementation(libs.intellij.icons)
     implementation(compose.desktop.common)
 }

@@ -30,16 +30,6 @@ public enum class DockingStyle {
 }
 
 /**
- * The window edges that can host auto-hide toolbars. There is deliberately no North
- * toolbar, matching ModernDocking.
- */
-public enum class AutoHideSide {
-    West,
-    East,
-    South,
-}
-
-/**
  * Where a dockable's tab strip is placed when it is part of a tab group.
  *
  * The `*Always` variants additionally force the dockable to render as a (single-tab)

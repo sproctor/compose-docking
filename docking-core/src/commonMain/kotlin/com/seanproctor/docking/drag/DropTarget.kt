@@ -1,7 +1,6 @@
 package com.seanproctor.docking.drag
 
 import androidx.compose.ui.geometry.Offset
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.NodeId
@@ -24,9 +23,6 @@ public sealed interface DropTarget {
         val nodeId: NodeId,
         val region: DockRegion,
     ) : DropTarget
-
-    /** Drop into an auto-hide toolbar via a pin handle. */
-    public data class Pin(val windowId: WindowId, val side: AutoHideSide) : DropTarget
 
     /** Insert into a tab strip at [index]. */
     public data class TabInsert(

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
@@ -45,8 +46,8 @@ class TabClickTest {
         val state = tabbedState()
         setContent { DockArea(state, modifier = Modifier.fillMaxSize()) }
 
-        val alpha = onNodeWithText("Alpha").fetchSemanticsNode().boundsInRoot.center
-        val beta = onNodeWithText("Beta").fetchSemanticsNode().boundsInRoot.center
+        val alpha = onNodeWithTag("tab:a").fetchSemanticsNode().boundsInRoot.center
+        val beta = onNodeWithTag("tab:b").fetchSemanticsNode().boundsInRoot.center
         // A -> B -> A, all well inside the double-tap timeout.
         onRoot().performMouseInput {
             moveTo(alpha)

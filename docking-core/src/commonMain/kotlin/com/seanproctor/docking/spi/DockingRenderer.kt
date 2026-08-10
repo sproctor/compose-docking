@@ -10,7 +10,7 @@ import com.seanproctor.docking.model.DockableId
 
 /**
  * The slot interface design-system adapters implement (Material 3, Jewel, or custom).
- * Core builds the models — including all gesture [Modifier]s — and calls these slots;
+ * Core builds the models - including all gesture [Modifier]s - and calls these slots;
  * adapters own structure and styling but never gesture logic.
  *
  * The default is the unstyled [DebugDockingRenderer]; wrap your content in an adapter's
@@ -38,17 +38,6 @@ public interface DockingRenderer {
     /** The translucent drop preview (core positions and sizes it). */
     @Composable
     public fun DropOverlay(model: DropOverlayModel, modifier: Modifier)
-
-    /** A button in an auto-hide toolbar strip. Drawn horizontal; core rotates W/E strips. */
-    @Composable
-    public fun AutoHideButton(model: AutoHideButtonModel, modifier: Modifier)
-
-    /**
-     * Renders [anchor] (receiving a callback that opens the menu) plus the design
-     * system's menu component anchored to it, showing [items].
-     */
-    @Composable
-    public fun MenuHost(items: List<DockMenuItem>, anchor: @Composable (openMenu: () -> Unit) -> Unit)
 
     /** Shown when a window's dock area is empty. */
     @Composable

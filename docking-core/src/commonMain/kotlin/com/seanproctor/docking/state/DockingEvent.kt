@@ -1,6 +1,5 @@
 package com.seanproctor.docking.state
 
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.WindowId
 
@@ -13,7 +12,7 @@ public sealed interface DockingEvent {
 
     /**
      * [isTemporary] marks the transient undock/dock pair produced by a move (including
-     * drags), so listeners can ignore the churn — ModernDocking's `isTemporary` flag.
+     * drags), so listeners can ignore the churn - ModernDocking's `isTemporary` flag.
      */
     public data class Docked(
         val dockableId: DockableId,
@@ -31,12 +30,6 @@ public sealed interface DockingEvent {
 
     /** The dockable stopped being the selected tab of its group. */
     public data class Hidden(val dockableId: DockableId) : DockingEvent
-
-    public data class AutoHideChanged(
-        val dockableId: DockableId,
-        val enabled: Boolean,
-        val side: AutoHideSide?,
-    ) : DockingEvent
 
     public data class Maximized(val dockableId: DockableId) : DockingEvent
 

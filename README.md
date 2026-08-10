@@ -1,8 +1,8 @@
 # Compose Docking
 
 IDE-style window docking for [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/):
-splits, tab groups, drag-to-dock with docking handles, floating windows, auto-hide toolbars,
-maximize, and layout persistence.
+splits, tab groups, drag-to-dock with docking handles, floating windows, maximize,
+and layout persistence.
 
 A port of the concepts and algorithms of [ModernDocking](https://github.com/andrewauclair/ModernDocking)
 (Java Swing, MIT) to an idiomatic Compose API.
@@ -18,7 +18,7 @@ A port of the concepts and algorithms of [ModernDocking](https://github.com/andr
 | `com.seanproctor:compose-docking-jewel` | Jewel (IntelliJ look-and-feel) renderer | JVM only |
 
 Floating OS windows and cross-window drag are desktop (JVM) features. Everything else —
-splits, tabs, in-window drag-to-dock, tab reordering, auto-hide, maximize, persistence —
+splits, tabs, in-window drag-to-dock, tab reordering, maximize, persistence —
 is common code and works on every target.
 
 ## Quick start (desktop, Material 3)
@@ -34,7 +34,6 @@ fun main() = application {
                     dock("terminal", target = "editor", region = DockRegion.South, proportion = 0.3f)
                     dock("problems", target = "terminal", region = DockRegion.Center)
                     display("terminal")
-                    autoHide("todo", AutoHideSide.South)
                 }
             }
         },
@@ -87,8 +86,8 @@ a JDK 25+ (JetBrains Runtime recommended).
 
 - **`DockState`** — the single source of truth. Holds an immutable layout value
   (windows → tree of splits / tab groups / dockables), the dockable registry, and every
-  operation: `dock`, `undock`, `close` (with veto), `maximize`, `setAutoHide`,
-  `moveToNewWindow`, `show`, … Observe with `snapshotFlow { state.layout }` or the
+  operation: `dock`, `undock`, `close` (with veto), `maximize`, `moveToNewWindow`,
+  `show`, … Observe with `snapshotFlow { state.layout }` or the
   `state.events` flow.
 - **Dockables** are declared once with reactive `title`/`icon` lambdas, per-dockable
   `DockableOptions` (closable, floatable, docking style, anchor, …), optional
@@ -96,7 +95,7 @@ a JDK 25+ (JetBrains Runtime recommended).
   Content keeps all internal state when re-docked within a window; hoist what must
   survive a move *between windows* into `rememberSaveable`.
 - **Drag-to-dock** replicates ModernDocking: docking handles (window edges + hovered
-  panel + auto-hide pins), a translucent drop preview, 35% edge-region sensitivity,
+  panel), a translucent drop preview, 35% edge-region sensitivity,
   bidirectional docking-style filtering, tab-strip insertion, tearing off into floating
   windows, and Esc-cancel with full layout restore.
 - **Anchors** give layouts named regions that survive close-all: a placeholder stays in
@@ -119,7 +118,7 @@ a JDK 25+ (JetBrains Runtime recommended).
 
 ## Credits
 
-The docking model — drop-target precedence, region sensitivity, anchors, auto-hide,
+The docking model — drop-target precedence, region sensitivity, anchors, and
 layout persistence semantics — is ported from
 [ModernDocking](https://github.com/andrewauclair/ModernDocking) by Andrew Auclair (MIT).
 

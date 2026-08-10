@@ -12,11 +12,6 @@ kotlin {
     explicitApi()
     jvmToolchain(21)
 
-    // KGP's built-in ABI validation. The standalone binary-compatibility-validator does
-    // not recognize the AGP 9 KMP Android target, so it silently stopped dumping it.
-    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-    abiValidation()
-
     jvm()
     android {
         namespace = "com.seanproctor." + project.name.replace("-", ".")

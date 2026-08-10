@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -31,6 +33,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
@@ -42,9 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.SplitOrientation
-import com.seanproctor.docking.spi.AutoHideButtonModel
 import com.seanproctor.docking.spi.DividerModel
-import com.seanproctor.docking.spi.DockMenuItem
 import com.seanproctor.docking.spi.DockingRenderer
 import com.seanproctor.docking.spi.DropOverlayModel
 import com.seanproctor.docking.spi.HandleKind
@@ -55,12 +56,15 @@ import com.seanproctor.docking.spi.OverlayKind
 import com.seanproctor.docking.spi.TabStripModel
 import kotlin.math.roundToInt
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
 
 /**
  * Jewel implementation of the docking renderer: IDE-style tool-window headers (flat
  * panel background, compact hover-square buttons) and editor-style tabs with a selection
- * underline. Renders its own tab strip — Jewel's `TabStrip` has no drag/reorder hooks —
+ * underline. Renders its own tab strip - Jewel's `TabStrip` has no drag/reorder hooks -
  * but reads all colors from the ambient [JewelTheme], so it follows both standalone
  * IntUi themes and the IDE LaF bridge.
  */
@@ -124,9 +128,7 @@ public object JewelDockingRenderer : DockingRenderer {
                                     tab.title,
                                     color = theme.headerForeground.copy(alpha = if (tab.isSelected) 1f else 0.75f),
                                 )
-                                if (tab.onClose != null && (tab.isSelected || hovered)) {
-                                    SquareButton("×", onClick = tab.onClose!!)
-                                }
+                                tab.actions()
                             }
                         }
                         if (model.dropInsertionIndex == model.tabs.size) TabCaret()
@@ -134,9 +136,7 @@ public object JewelDockingRenderer : DockingRenderer {
                 },
                 gutter = { Box(Modifier.fillMaxHeight().then(model.gutterDragModifier)) },
             )
-            if (model.trailingMenuItems.isNotEmpty()) {
-                MenuHost(model.trailingMenuItems) { open -> SquareButton("⋮", onClick = open) }
-            }
+            model.trailingActions()
         }
     }
 
@@ -207,63 +207,62 @@ public object JewelDockingRenderer : DockingRenderer {
                 modifier = Modifier.padding(horizontal = 8.dp).weight(1f),
                 maxLines = 1,
             )
-            if (model.isMaximized) {
-                Text(
-                    "⛶",
-                    color = model.foreground ?: theme.activeHighlightBorder,
-                    modifier = Modifier.padding(end = 2.dp),
-                )
-            }
-            if (model.menuItems.isNotEmpty()) {
-                MenuHost(model.menuItems) { open ->
-                    SquareButton("⋮", color = foreground, onClick = open)
-                }
-            }
-            if (model.onClose != null) {
-                SquareButton("×", color = foreground, onClick = model.onClose!!)
-            }
+            model.trailingActions()
         }
     }
 
-    /** The 16px hover-square icon button IntelliJ uses in tool-window headers. */
+    /**
+     * Jewel's own icon action button, so hover/press states and icon resolution follow
+     * the IDE theme. Sized down to the 20px square IntelliJ uses in tool-window headers.
+     */
     @Composable
-    private fun SquareButton(
-        glyph: String,
-        color: Color = LocalDockingTheme.current.headerForeground,
+    private fun IconActionButton(
+        key: IconKey,
+        contentDescription: String,
+        tint: Color? = null,
         onClick: () -> Unit,
     ) {
-        val interaction = remember { MutableInteractionSource() }
-        val hovered by interaction.collectIsHoveredAsState()
-        Box(
-            Modifier
-                .padding(horizontal = 2.dp)
-                .size(20.dp)
-                .hoverable(interaction)
-                .background(if (hovered) color.copy(alpha = 0.1f) else Color.Transparent)
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(glyph, color = color.copy(alpha = 0.8f))
-        }
+        IconActionButton(
+            key = key,
+            contentDescription = contentDescription,
+            onClick = onClick,
+            modifier = Modifier.size(20.dp),
+            // Null keeps the IDE theme's own icon colors; a dockable with a title-bar
+            // color override tints them so they stay legible against it.
+            colorFilter = tint?.let { ColorFilter.tint(it) },
+        )
     }
 
+    /**
+     * IntelliJ's three-dot grip, centred on an otherwise invisible divider: three 3dp
+     * dots spaced 5dp apart along it, brightening while hovered or dragged. No separator
+     * line - panels meet directly, as the IDE draws them.
+     */
     @Composable
     override fun SplitDivider(model: DividerModel, modifier: Modifier) {
         val theme = LocalDockingTheme.current
         val interaction = remember { MutableInteractionSource() }
         val hovered by interaction.collectIsHoveredAsState()
-        val color = when {
+        val dotColor = when {
             model.isDragging -> theme.activeHighlightBorder
-            hovered -> theme.handleForeground.copy(alpha = 0.4f)
-            else -> theme.handleOutline
+            hovered -> theme.handleForeground
+            else -> theme.handleForeground.copy(alpha = 0.7f)
         }
         Canvas(modifier.hoverable(interaction).then(model.dragModifier)) {
+            val radius = 1.5.dp.toPx()
+            val step = 5.dp.toPx()
             if (model.orientation == SplitOrientation.Horizontal) {
                 val x = size.width / 2f
-                drawLine(color, Offset(x, 0f), Offset(x, size.height), strokeWidth = if (model.isDragging) 2f else 1f)
+                val centerY = size.height / 2f
+                for (i in -1..1) {
+                    drawCircle(dotColor, radius, Offset(x, centerY + i * step))
+                }
             } else {
                 val y = size.height / 2f
-                drawLine(color, Offset(0f, y), Offset(size.width, y), strokeWidth = if (model.isDragging) 2f else 1f)
+                val centerX = size.width / 2f
+                for (i in -1..1) {
+                    drawCircle(dotColor, radius, Offset(centerX + i * step, y))
+                }
             }
         }
     }
@@ -291,11 +290,11 @@ public object JewelDockingRenderer : DockingRenderer {
                     drawRect(fg, Offset(inset, inset), Size(size.width - 2 * inset, size.height - 2 * inset))
                 HandleKind.RootNorth, HandleKind.DockableNorth ->
                     drawRect(fg, Offset(inset, inset), Size(size.width - 2 * inset, bar))
-                HandleKind.RootSouth, HandleKind.DockableSouth, HandleKind.PinSouth ->
+                HandleKind.RootSouth, HandleKind.DockableSouth ->
                     drawRect(fg, Offset(inset, size.height - inset - bar), Size(size.width - 2 * inset, bar))
-                HandleKind.RootWest, HandleKind.DockableWest, HandleKind.PinWest ->
+                HandleKind.RootWest, HandleKind.DockableWest ->
                     drawRect(fg, Offset(inset, inset), Size(bar, size.height - 2 * inset))
-                HandleKind.RootEast, HandleKind.DockableEast, HandleKind.PinEast ->
+                HandleKind.RootEast, HandleKind.DockableEast ->
                     drawRect(fg, Offset(size.width - inset - bar, inset), Size(bar, size.height - 2 * inset))
             }
         }
@@ -309,101 +308,6 @@ public object JewelDockingRenderer : DockingRenderer {
             OverlayKind.TabCaret -> theme.activeHighlightBorder
         }
         Box(modifier.background(color))
-    }
-
-    @Composable
-    override fun AutoHideButton(model: AutoHideButtonModel, modifier: Modifier) {
-        val theme = LocalDockingTheme.current
-        Box(
-            modifier
-                .clickable(onClick = model.onClick)
-                .background(
-                    if (model.isPanelOpen) {
-                        theme.activeHighlightBorder.copy(alpha = 0.2f)
-                    } else {
-                        theme.toolbarBackground.copy(alpha = 0f)
-                    },
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            Text(model.title, color = theme.headerForeground.copy(alpha = 0.85f))
-        }
-    }
-
-    @Composable
-    override fun MenuHost(
-        items: List<DockMenuItem>,
-        anchor: @Composable (openMenu: () -> Unit) -> Unit,
-    ) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            anchor { expanded = true }
-            if (expanded) {
-                val theme = LocalDockingTheme.current
-                Popup(onDismissRequest = { expanded = false }) {
-                    Column(
-                        Modifier
-                            .background(theme.headerBackground)
-                            .border(1.dp, theme.handleOutline)
-                            .padding(vertical = 4.dp),
-                    ) {
-                        MenuItems(items, indent = 0) { expanded = false }
-                    }
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun MenuItems(items: List<DockMenuItem>, indent: Int, dismiss: () -> Unit) {
-        val theme = LocalDockingTheme.current
-        for (item in items) {
-            when (item) {
-                is DockMenuItem.Action -> {
-                    val interaction = remember { MutableInteractionSource() }
-                    val hovered by interaction.collectIsHoveredAsState()
-                    Text(
-                        (if (item.selected) "✓ " else "") + item.label,
-                        color = theme.headerForeground.copy(alpha = if (item.enabled) 1f else 0.4f),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .hoverable(interaction)
-                            .background(
-                                if (hovered && item.enabled) {
-                                    theme.activeHighlightBorder.copy(alpha = 0.2f)
-                                } else {
-                                    theme.headerBackground.copy(alpha = 0f)
-                                },
-                            )
-                            .clickable(enabled = item.enabled) {
-                                dismiss()
-                                item.onClick()
-                            }
-                            .padding(start = (12 + indent * 14).dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
-                    )
-                }
-                is DockMenuItem.SubMenu -> {
-                    Text(
-                        item.label,
-                        color = theme.headerForeground.copy(alpha = 0.55f),
-                        modifier = Modifier.padding(
-                            start = (12 + indent * 14).dp,
-                            end = 12.dp,
-                            top = 5.dp,
-                            bottom = 2.dp,
-                        ),
-                    )
-                    MenuItems(item.items, indent + 1, dismiss)
-                }
-                DockMenuItem.Separator -> Box(
-                    Modifier
-                        .padding(vertical = 3.dp, horizontal = 8.dp)
-                        .height(1.dp)
-                        .width(140.dp)
-                        .background(theme.handleOutline),
-                )
-            }
-        }
     }
 
     @Composable

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,11 +43,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.seanproctor.docking.material3.generated.resources.Res
+import com.seanproctor.docking.material3.generated.resources.close
+import com.seanproctor.docking.material3.generated.resources.more_vert
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.SplitOrientation
-import com.seanproctor.docking.spi.AutoHideButtonModel
 import com.seanproctor.docking.spi.DividerModel
-import com.seanproctor.docking.spi.DockMenuItem
 import com.seanproctor.docking.spi.DockingRenderer
 import com.seanproctor.docking.spi.DropOverlayModel
 import com.seanproctor.docking.spi.HandleKind
@@ -56,6 +58,7 @@ import com.seanproctor.docking.spi.LocalDockingTheme
 import com.seanproctor.docking.spi.OverlayKind
 import com.seanproctor.docking.spi.TabStripModel
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * Material 3 implementation of the docking renderer. Deliberately avoids `TabRow`
@@ -100,9 +103,7 @@ public object Material3DockingRenderer : DockingRenderer {
                                     fontWeight = if (tab.isSelected) FontWeight.Medium else FontWeight.Normal,
                                     color = if (tab.isSelected) colors.onSurface else colors.onSurfaceVariant,
                                 )
-                                if (tab.onClose != null && (tab.isSelected || hovered)) {
-                                    GlyphButton("×", onClick = tab.onClose!!)
-                                }
+                                tab.actions()
                             }
                         }
                         if (model.dropInsertionIndex == model.tabs.size) TabCaret()
@@ -110,11 +111,7 @@ public object Material3DockingRenderer : DockingRenderer {
                 },
                 gutter = { Box(Modifier.fillMaxHeight().then(model.gutterDragModifier)) },
             )
-            if (model.trailingMenuItems.isNotEmpty()) {
-                MenuHost(model.trailingMenuItems) { open ->
-                    GlyphButton("⋮", onClick = open)
-                }
-            }
+            model.trailingActions()
         }
     }
 
@@ -170,29 +167,19 @@ public object Material3DockingRenderer : DockingRenderer {
                     modifier = Modifier.padding(horizontal = 10.dp).weight(1f),
                     maxLines = 1,
                 )
-                if (model.isMaximized) {
-                    Text(
-                        "⛶",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = model.foreground ?: colors.primary,
-                        modifier = Modifier.padding(end = 2.dp),
-                    )
-                }
-                if (model.menuItems.isNotEmpty()) {
-                    MenuHost(model.menuItems) { open ->
-                        GlyphButton("⋮", color = foreground, onClick = open)
-                    }
-                }
-                if (model.onClose != null) {
-                    GlyphButton("×", color = foreground, onClick = model.onClose!!)
-                }
+                model.trailingActions()
             }
         }
     }
 
+    /**
+     * A compact icon button for tab and header affordances. [color] follows the header's
+     * foreground so a dockable with a title-bar color override keeps legible buttons.
+     */
     @Composable
-    private fun GlyphButton(
-        glyph: String,
+    private fun IconActionButton(
+        painter: Painter,
+        contentDescription: String,
         color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
         onClick: () -> Unit,
     ) {
@@ -210,32 +197,57 @@ public object Material3DockingRenderer : DockingRenderer {
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, style = MaterialTheme.typography.labelLarge, color = color)
+            Icon(
+                painter = painter,
+                contentDescription = contentDescription,
+                tint = color,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 
+    /**
+     * The Material 3 drag handle alone: a full-corner capsule, 4dp thick and 48dp long,
+     * `outline` at rest and `onSurface` while hovered or dragged. No separator line -
+     * each dockable already draws its own border, so a hairline here would only add a
+     * third parallel line between panes.
+     *
+     * The spec also grows the capsule to 12dp x 52dp when pressed or dragged. The core
+     * measures dividers at a fixed thickness well under 12dp, so growing the thickness
+     * would just clip; only the length and color change here.
+     */
     @Composable
     override fun SplitDivider(model: DividerModel, modifier: Modifier) {
         val colors = MaterialTheme.colorScheme
         val interaction = remember { MutableInteractionSource() }
         val hovered by interaction.collectIsHoveredAsState()
-        val lineColor = when {
-            model.isDragging -> colors.primary
-            hovered -> colors.outline
-            else -> colors.outlineVariant
-        }
+        val engaged = model.isDragging || hovered
+        val handleColor = if (engaged) colors.onSurface else colors.outline
         Canvas(
             modifier
                 .hoverable(interaction)
                 .then(model.dragModifier),
         ) {
+            val thickness = 4.dp.toPx()
+            val length = (if (engaged) 52.dp else 48.dp).toPx()
+            val radius = CornerRadius(thickness / 2f, thickness / 2f)
             if (model.orientation == SplitOrientation.Horizontal) {
-                // Vertical divider bar between side-by-side panes.
-                val x = size.width / 2f
-                drawLine(lineColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = if (model.isDragging) 3f else 1.5f)
+                // Vertical divider between side-by-side panes.
+                val handleLength = length.coerceAtMost(size.height)
+                drawRoundRect(
+                    color = handleColor,
+                    topLeft = Offset((size.width - thickness) / 2f, (size.height - handleLength) / 2f),
+                    size = Size(thickness, handleLength),
+                    cornerRadius = radius,
+                )
             } else {
-                val y = size.height / 2f
-                drawLine(lineColor, Offset(0f, y), Offset(size.width, y), strokeWidth = if (model.isDragging) 3f else 1.5f)
+                val handleLength = length.coerceAtMost(size.width)
+                drawRoundRect(
+                    color = handleColor,
+                    topLeft = Offset((size.width - handleLength) / 2f, (size.height - thickness) / 2f),
+                    size = Size(handleLength, thickness),
+                    cornerRadius = radius,
+                )
             }
         }
     }
@@ -265,11 +277,11 @@ public object Material3DockingRenderer : DockingRenderer {
                     drawRect(fg, Offset(inset, inset), Size(size.width - 2 * inset, size.height - 2 * inset))
                 HandleKind.RootNorth, HandleKind.DockableNorth ->
                     drawRect(fg, Offset(inset, inset), Size(size.width - 2 * inset, bar))
-                HandleKind.RootSouth, HandleKind.DockableSouth, HandleKind.PinSouth ->
+                HandleKind.RootSouth, HandleKind.DockableSouth ->
                     drawRect(fg, Offset(inset, size.height - inset - bar), Size(size.width - 2 * inset, bar))
-                HandleKind.RootWest, HandleKind.DockableWest, HandleKind.PinWest ->
+                HandleKind.RootWest, HandleKind.DockableWest ->
                     drawRect(fg, Offset(inset, inset), Size(bar, size.height - 2 * inset))
-                HandleKind.RootEast, HandleKind.DockableEast, HandleKind.PinEast ->
+                HandleKind.RootEast, HandleKind.DockableEast ->
                     drawRect(fg, Offset(size.width - inset - bar, inset), Size(bar, size.height - 2 * inset))
             }
         }
@@ -283,77 +295,6 @@ public object Material3DockingRenderer : DockingRenderer {
             OverlayKind.TabCaret -> MaterialTheme.colorScheme.primary
         }
         Box(modifier.background(color))
-    }
-
-    @Composable
-    override fun AutoHideButton(model: AutoHideButtonModel, modifier: Modifier) {
-        val colors = MaterialTheme.colorScheme
-        Box(
-            modifier
-                .clickable(onClick = model.onClick)
-                .background(
-                    if (model.isPanelOpen) colors.secondaryContainer else colors.surface.copy(alpha = 0f),
-                    MaterialTheme.shapes.extraSmall,
-                )
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-        ) {
-            Text(
-                model.title,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (model.isPanelOpen) colors.onSecondaryContainer else colors.onSurfaceVariant,
-            )
-        }
-    }
-
-    @Composable
-    override fun MenuHost(
-        items: List<DockMenuItem>,
-        anchor: @Composable (openMenu: () -> Unit) -> Unit,
-    ) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            anchor { expanded = true }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                MenuItems(items, indent = 0) { expanded = false }
-            }
-        }
-    }
-
-    @Composable
-    private fun MenuItems(items: List<DockMenuItem>, indent: Int, dismiss: () -> Unit) {
-        for (item in items) {
-            when (item) {
-                is DockMenuItem.Action -> DropdownMenuItem(
-                    text = {
-                        Text(
-                            (if (item.selected) "✓ " else "") + item.label,
-                            modifier = Modifier.padding(start = (indent * 12).dp),
-                        )
-                    },
-                    enabled = item.enabled,
-                    onClick = {
-                        dismiss()
-                        item.onClick()
-                    },
-                )
-                is DockMenuItem.SubMenu -> {
-                    Text(
-                        item.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(
-                            start = (12 + indent * 12).dp,
-                            top = 6.dp,
-                            bottom = 2.dp,
-                        ),
-                    )
-                    MenuItems(item.items, indent + 1, dismiss)
-                }
-                DockMenuItem.Separator -> androidx.compose.material3.HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                )
-            }
-        }
     }
 
     @Composable

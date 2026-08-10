@@ -148,7 +148,13 @@ val propsDemo: PropsDemoState = PropsDemoState()
 
 // ---------- The default layout (MainFrame's WindowLayoutBuilder) ----------
 
-fun demoLayout(): DockLayout = dockLayout {
+/**
+ * [alwaysDisplayTabs] mirrors ModernDocking's `--always-use-tabs`: it has to be passed
+ * here as well as to [com.seanproctor.docking.state.DockingSettings], because the layout
+ * builder decides up front whether a lone dockable becomes a tab group or a leaf.
+ */
+fun demoLayout(alwaysDisplayTabs: Boolean = false): DockLayout =
+    dockLayout(alwaysDisplayTabs = alwaysDisplayTabs) {
     mainWindow {
         dock("always-displayed")
         dock("one", target = "always-displayed", region = DockRegion.Center)

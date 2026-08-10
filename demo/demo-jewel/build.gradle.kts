@@ -5,8 +5,8 @@ plugins {
 }
 
 kotlin {
-    // Jewel's `-262.*` builds (IntelliJ platform 2026.2) ship Java 25 bytecode — every
-    // class in jewel-ui/-foundation is major version 69 — so this demo needs a 25
+    // Jewel's `-262.*` builds (IntelliJ platform 2026.2) ship Java 25 bytecode - every
+    // class in jewel-ui/-foundation is major version 69 - so this demo needs a 25
     // toolchain. Its `-261.*` builds are Java 21 if that ever needs to come back down.
     jvmToolchain(25)
 }

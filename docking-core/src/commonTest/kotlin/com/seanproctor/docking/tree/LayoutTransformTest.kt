@@ -1,7 +1,6 @@
 package com.seanproctor.docking.tree
 
 import com.seanproctor.docking.model.AnchorId
-import com.seanproctor.docking.model.AutoHideSide
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -71,16 +70,6 @@ class UndockFromLayoutTest {
         assertEquals(WindowKind.Main, layout.mainWindow.kind)
     }
 
-    @Test
-    fun undockFromAutoHideToolbar() {
-        val c = ctx()
-        var layout = c.sampleLayout()
-        layout = c.autoHideInLayout(layout, B, AutoHideSide.East).layout
-        assertNotNull(layout.mainWindow.autoHide.sideOf(B))
-        val result = c.undockFromLayout(layout, B)
-        assertNull(result.layout.mainWindow.autoHide.sideOf(B))
-        assertNull(result.layout.mainWindow.root?.findLeaf(B))
-    }
 }
 
 class DockIntoLayoutTest {
@@ -148,13 +137,6 @@ class MaximizeTest {
     }
 
     @Test
-    fun maximizeAutoHiddenDockableReturnsNull() {
-        val c = ctx()
-        val layout = c.autoHideInLayout(c.sampleLayout(), B, AutoHideSide.East).layout
-        assertNull(c.maximizeInLayout(layout, B))
-    }
-
-    @Test
     fun structuralOperationOnMaximizedWindowRestoresFirst() {
         val c = ctx()
         val layout = assertNotNull(c.maximizeInLayout(c.sampleLayout(), A))
@@ -166,46 +148,6 @@ class MaximizeTest {
     }
 }
 
-class AutoHideLayoutTest {
-
-    @Test
-    fun autoHideMovesDockableToToolbar() {
-        val c = ctx()
-        val layout = c.autoHideInLayout(c.sampleLayout(), B, AutoHideSide.South, 0.3f).layout
-        val window = layout.mainWindow
-        assertNull(window.root?.findLeaf(B))
-        assertEquals(AutoHideSide.South, window.autoHide.sideOf(B))
-        assertEquals(0.3f, window.autoHide.south.single().slideProportion)
-    }
-
-    @Test
-    fun autoShowDocksBackAtToolbarSide() {
-        val c = ctx()
-        var layout = c.autoHideInLayout(c.sampleLayout(), B, AutoHideSide.East, 0.3f).layout
-        layout = c.autoShowInLayout(layout, B)
-        val window = layout.mainWindow
-        assertNull(window.autoHide.sideOf(B))
-        val root = assertIs<DockNode.Split>(window.root)
-        // Docked back on the east side with the slide proportion.
-        assertEquals(B, assertIs<DockNode.Leaf>(root.second).dockableId)
-        assertEquals(0.7f, root.proportion)
-    }
-
-    @Test
-    fun autoHidePreservesAnchorPlaceholder() {
-        val c = ctx(anchors = mapOf(B to AnchorId("side")))
-        val layout = c.autoHideInLayout(c.sampleLayout(), B, AutoHideSide.East).layout
-        assertNotNull(layout.mainWindow.root?.findAnchorNode(AnchorId("side")))
-    }
-
-    @Test
-    fun setSlideProportionUpdatesEntry() {
-        val c = ctx()
-        var layout = c.autoHideInLayout(c.sampleLayout(), B, AutoHideSide.West, 0.25f).layout
-        layout = setSlideProportionInLayout(layout, B, 0.4f)
-        assertEquals(0.4f, layout.mainWindow.autoHide.west.single().slideProportion)
-    }
-}
 
 class WindowManagementTest {
 
