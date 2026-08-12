@@ -241,6 +241,18 @@ public object Material3DockingRenderer : DockingRenderer {
     }
 
     @Composable
+    override fun CollapsedAnchor(model: CollapsedAnchorModel, modifier: Modifier) {
+        // Surface-variant reads as a recess rather than a panel, which is what an empty
+        // area should look like. The primary tint marks it as the live drop target.
+        val background = if (model.isDropTarget) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
+        Box(modifier.fillMaxSize().background(background))
+    }
+
+    @Composable
     override fun MissingDockable(id: DockableId, modifier: Modifier) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(

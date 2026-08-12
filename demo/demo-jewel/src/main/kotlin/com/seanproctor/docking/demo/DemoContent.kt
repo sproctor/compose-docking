@@ -369,6 +369,10 @@ fun DockState.demoDockables() {
             options = DockableOptions(
                 // Panel Seven is CENTER_ONLY in the ModernDocking demo
                 dockingStyle = if (id == "seven") DockingStyle.CenterOnly else DockingStyle.Both,
+                // Panel Three anchors the west column, so closing it leaves the area behind
+                // as a strip (see collapsedAnchorThickness in the demo's DockingSettings)
+                // rather than collapsing it - drag Three back and the column reopens.
+                anchor = if (id == "three") DemoToolsAnchor else null,
             ),
             headerBackground = titleColor?.let { { it } },
             headerForeground = titleColor?.let { { Color.Black } },

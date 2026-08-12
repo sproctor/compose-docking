@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockableId
@@ -261,6 +262,21 @@ public object JewelDockingRenderer : DockingRenderer {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No tool windows", color = theme.headerForeground.copy(alpha = 0.5f))
         }
+    }
+
+    @Composable
+    override fun CollapsedAnchor(model: CollapsedAnchorModel, modifier: Modifier) {
+        val theme = LocalDockingTheme.current
+        // A recessed band, the way IntelliJ leaves a tool-window stripe: enough to read as
+        // a place that takes windows, quiet enough to ignore. It lights up while a drag is
+        // over it, which is the only time it is asking for attention.
+        val background = if (model.isDropTarget) theme.overlayBackground else theme.toolbarBackground
+        Box(
+            modifier
+                .fillMaxSize()
+                .background(background)
+                .border(Dp.Hairline, theme.headerForeground.copy(alpha = 0.15f)),
+        )
     }
 
     @Composable

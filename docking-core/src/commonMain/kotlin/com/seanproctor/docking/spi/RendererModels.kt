@@ -5,6 +5,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.SplitOrientation
 
@@ -86,6 +87,19 @@ public class DividerModel(
     public val isDragging: Boolean,
     /** Core-built: drag to resize, double-click to reset 50/50, resize cursor. */
     public val dragModifier: Modifier,
+)
+
+/**
+ * An empty anchor drawn as a strip. [orientation] is the axis of the split the strip sits
+ * in, so it says which way the strip runs: [SplitOrientation.Horizontal] is a side column
+ * collapsed to a vertical bar, [SplitOrientation.Vertical] a band collapsed to a
+ * horizontal one. [isDropTarget] is true while a drag hovers it.
+ */
+@Stable
+public class CollapsedAnchorModel(
+    public val anchorId: AnchorId,
+    public val orientation: SplitOrientation,
+    public val isDropTarget: Boolean,
 )
 
 /** The 10 docking handles: 5 window-root and 5 over the hovered dockable. */

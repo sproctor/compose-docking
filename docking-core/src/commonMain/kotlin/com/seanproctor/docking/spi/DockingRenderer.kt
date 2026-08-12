@@ -1,5 +1,6 @@
 package com.seanproctor.docking.spi
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
@@ -42,6 +43,22 @@ public interface DockingRenderer {
     /** Shown when a window's dock area is empty. */
     @Composable
     public fun EmptyRootPlaceholder(modifier: Modifier)
+
+    /**
+     * An empty anchor collapsed to a strip, when
+     * [com.seanproctor.docking.state.DockingSettings.collapsedAnchorThickness] is set.
+     *
+     * The strip is the whole of what is left of an area whose dockables have all gone, so
+     * it should read as "something belongs here" and stay legible at the configured
+     * thickness - a tinted band, a rotated label, an icon. It remains a drop target, so
+     * the drag overlay draws over it as usual.
+     *
+     * Defaults to blank space, which collapses the area without drawing anything.
+     */
+    @Composable
+    public fun CollapsedAnchor(model: CollapsedAnchorModel, modifier: Modifier) {
+        Box(modifier)
+    }
 
     /** Shown in place of a dockable that is in the layout but not (yet) registered. */
     @Composable

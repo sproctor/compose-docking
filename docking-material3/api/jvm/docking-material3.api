@@ -6,6 +6,7 @@ public final class com/seanproctor/docking/material3/Material3DockingKt {
 public final class com/seanproctor/docking/material3/Material3DockingRenderer : com/seanproctor/docking/spi/DockingRenderer {
 	public static final field $stable I
 	public static final field INSTANCE Lcom/seanproctor/docking/material3/Material3DockingRenderer;
+	public fun CollapsedAnchor (Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DockableHeader (Lcom/seanproctor/docking/spi/HeaderModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DockingHandle (Lcom/seanproctor/docking/spi/HandleModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DragPreview (Ljava/lang/String;Landroidx/compose/ui/graphics/painter/Painter;Landroidx/compose/runtime/Composer;I)V

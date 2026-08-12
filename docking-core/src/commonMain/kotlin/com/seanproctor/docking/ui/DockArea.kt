@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockNode
@@ -38,6 +39,8 @@ import com.seanproctor.docking.model.NodeId
 import com.seanproctor.docking.model.SplitOrientation
 import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.model.WindowId
+import com.seanproctor.docking.drag.DropTarget
+import com.seanproctor.docking.spi.CollapsedAnchorModel
 import com.seanproctor.docking.spi.DividerModel
 import com.seanproctor.docking.spi.HeaderModel
 import com.seanproctor.docking.spi.LocalDockingRenderer
@@ -47,6 +50,7 @@ import com.seanproctor.docking.spi.TabPlacement
 import com.seanproctor.docking.spi.TabStripModel
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockableSpec
+import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.launch
 
 /**
@@ -96,21 +100,59 @@ public fun DockArea(
 // ----- Tree rendering -----
 
 @Composable
-internal fun DockAreaScope.RenderNode(node: DockNode, modifier: Modifier = Modifier) {
+internal fun DockAreaScope.RenderNode(
+    node: DockNode,
+    modifier: Modifier = Modifier,
+    /** Set by [RenderSplit] for an anchor whose slot it collapsed to a strip. */
+    collapsedIn: SplitOrientation? = null,
+) {
     when (node) {
         is DockNode.Leaf -> RenderLeaf(node, showHeader = true, modifier)
-        is DockNode.Anchor -> RenderAnchor(node, modifier)
+        is DockNode.Anchor -> RenderAnchor(node, modifier, collapsedIn)
         is DockNode.Split -> RenderSplit(node, modifier)
         is DockNode.Tabs -> RenderTabs(node, modifier)
     }
 }
 
 @Composable
-private fun DockAreaScope.RenderAnchor(node: DockNode.Anchor, modifier: Modifier) {
+private fun DockAreaScope.RenderAnchor(
+    node: DockNode.Anchor,
+    modifier: Modifier,
+    collapsedIn: SplitOrientation?,
+) {
     NodeBoundsEffect(node.id)
-    LocalDockingRenderer.current.EmptyRootPlaceholder(
-        modifier.onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
-    )
+    val positioned = modifier.onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) }
+    val renderer = LocalDockingRenderer.current
+    if (collapsedIn == null) {
+        renderer.EmptyRootPlaceholder(positioned)
+    } else {
+        val isDropTarget = (state.dragController.session?.target as? DropTarget.OnNode)?.nodeId == node.id
+        renderer.CollapsedAnchor(
+            CollapsedAnchorModel(node.anchorId, collapsedIn, isDropTarget),
+            positioned,
+        )
+    }
+}
+
+/**
+ * The fixed thickness this child of a split takes along the split's axis, or null when it
+ * takes its proportional share as usual. Only an empty anchor is ever pinned to a size:
+ * [Dp.Hairline]-thin down to zero when it is hidden until a drag, or the configured strip.
+ *
+ * Reading the drag session here is what makes a hidden area reappear: the read is recorded
+ * in composition, so starting a drag relayouts the split with the strip in it.
+ * See [com.seanproctor.docking.state.DockingSettings.collapsedAnchorThickness] and
+ * [com.seanproctor.docking.state.DockingSettings.emptyAnchorVisibility].
+ */
+private fun DockAreaScope.anchorThickness(child: DockNode): Dp? {
+    if (child !is DockNode.Anchor) return null
+    val settings = state.settings
+    if (settings.emptyAnchorVisibility == EmptyAnchorVisibility.WhileDragging &&
+        state.dragController.session == null
+    ) {
+        return 0.dp
+    }
+    return settings.collapsedAnchorThickness.takeIf { settings.collapsesEmptyAnchors }
 }
 
 @Composable
@@ -278,7 +320,15 @@ internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel = H
 internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier) {
     NodeBoundsEffect(node.id)
     val currentNode by rememberUpdatedState(node)
-    var dragProportion by remember { mutableStateOf<Float?>(null) }
+    // The live proportion while the divider is being dragged, held as a raw state object and
+    // read only from the measure lambda below. Reading it in the composable body - as
+    // `by remember` invites - recomposes this split, and so re-invokes the content lambdas of
+    // everything docked inside it, on every pointer move, when all that has actually changed
+    // is where the divider sits. Deferring the read to layout turns a drag into a re-measure.
+    val dragProportion = remember { mutableStateOf<Float?>(null) }
+    // Separate from the value above so the renderer's "is dragging" flag flips twice per drag
+    // rather than once per frame; it is read in composition, which is what makes that matter.
+    var dividerDragging by remember { mutableStateOf(false) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val horizontal = node.orientation == SplitOrientation.Horizontal
     val renderer = LocalDockingRenderer.current
@@ -286,7 +336,10 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
     val dividerDrag = Modifier
         .pointerInput(node.id) {
             detectDragGestures(
-                onDragStart = { dragProportion = currentNode.proportion },
+                onDragStart = {
+                    dragProportion.value = currentNode.proportion
+                    dividerDragging = true
+                },
                 onDrag = { change, amount ->
                     change.consume()
                     val thicknessPx = DividerThickness.toPx()
@@ -301,15 +354,20 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
                         } else {
                             amount.y
                         }
-                        dragProportion = ((dragProportion ?: currentNode.proportion) + delta / total)
-                            .coerceIn(0.05f, 0.95f)
+                        dragProportion.value =
+                            ((dragProportion.value ?: currentNode.proportion) + delta / total)
+                                .coerceIn(0.05f, 0.95f)
                     }
                 },
                 onDragEnd = {
-                    dragProportion?.let { state.setSplitProportion(currentNode.id, it) }
-                    dragProportion = null
+                    dragProportion.value?.let { state.setSplitProportion(currentNode.id, it) }
+                    dragProportion.value = null
+                    dividerDragging = false
                 },
-                onDragCancel = { dragProportion = null },
+                onDragCancel = {
+                    dragProportion.value = null
+                    dividerDragging = false
+                },
             )
         }
         .pointerInput(node.id) {
@@ -317,28 +375,51 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
         }
         .pointerHoverIcon(PointerIcon.Hand)
 
-    val proportion = (dragProportion ?: node.proportion).coerceIn(0.05f, 0.95f)
+    // An empty anchor gives its share back to its neighbour and keeps only a strip - or
+    // nothing at all, when it stays hidden until a drag. The split's proportion is left
+    // alone either way, so filling the anchor restores the old geometry.
+    val firstThickness = anchorThickness(node.first)
+    val secondThickness = anchorThickness(node.second)
+    val pinned = firstThickness ?: secondThickness
+    // A hidden area must not leave its divider behind as an unexplained gap.
+    val dividerVisible = pinned == null || pinned > 0.dp
+    // Resizing a pinned side would move a divider against a fixed-size strip, so the
+    // divider goes inert until there is something there to resize.
+    val dividerModifier = if (pinned != null) Modifier else dividerDrag
 
     Layout(
         modifier = modifier
             .onSizeChanged { containerSize = it }
             .onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
         content = {
-            key(node.first.id) { RenderNode(node.first) }
+            key(node.first.id) {
+                RenderNode(node.first, collapsedIn = node.orientation.takeIf { firstThickness != null })
+            }
             renderer.SplitDivider(
-                DividerModel(node.orientation, dragProportion != null, dividerDrag),
+                DividerModel(node.orientation, dividerDragging, dividerModifier),
                 Modifier,
             )
-            key(node.second.id) { RenderNode(node.second) }
+            key(node.second.id) {
+                RenderNode(node.second, collapsedIn = node.orientation.takeIf { secondThickness != null })
+            }
         },
     ) { measurables, constraints ->
         require(measurables.size == 3) { "split expects exactly [first, divider, second]" }
-        val thickness = DividerThickness.roundToPx()
+        // Read here, not in composition: this is the whole point of the drag being cheap.
+        val proportion = (dragProportion.value ?: node.proportion).coerceIn(0.05f, 0.95f)
+        val thickness = if (dividerVisible) DividerThickness.roundToPx() else 0
         val width = constraints.maxWidth
         val height = constraints.maxHeight
+        // Never let a strip crowd out its neighbour on a small window: half the axis is
+        // the most an empty area may take, whatever thickness was configured.
+        fun strip(axis: Int) = (pinned ?: 0.dp).roundToPx().coerceIn(0, axis / 2)
         if (horizontal) {
             val available = (width - thickness).coerceAtLeast(0)
-            val firstWidth = (available * proportion).toInt()
+            val firstWidth = when {
+                firstThickness != null -> strip(available)
+                secondThickness != null -> available - strip(available)
+                else -> (available * proportion).toInt()
+            }
             val secondWidth = available - firstWidth
             val firstPlaceable = measurables[0].measure(Constraints.fixed(firstWidth, height))
             val dividerPlaceable = measurables[1].measure(Constraints.fixed(thickness, height))
@@ -350,7 +431,11 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
             }
         } else {
             val available = (height - thickness).coerceAtLeast(0)
-            val firstHeight = (available * proportion).toInt()
+            val firstHeight = when {
+                firstThickness != null -> strip(available)
+                secondThickness != null -> available - strip(available)
+                else -> (available * proportion).toInt()
+            }
             val secondHeight = available - firstHeight
             val firstPlaceable = measurables[0].measure(Constraints.fixed(width, firstHeight))
             val dividerPlaceable = measurables[1].measure(Constraints.fixed(width, thickness))

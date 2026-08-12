@@ -114,6 +114,17 @@ final enum class com.seanproctor.docking.spi/TabPlacement : kotlin/Enum<com.sean
     final fun values(): kotlin/Array<com.seanproctor.docking.spi/TabPlacement> // com.seanproctor.docking.spi/TabPlacement.values|values#static(){}[0]
 }
 
+final enum class com.seanproctor.docking.state/EmptyAnchorVisibility : kotlin/Enum<com.seanproctor.docking.state/EmptyAnchorVisibility> { // com.seanproctor.docking.state/EmptyAnchorVisibility|null[0]
+    enum entry Always // com.seanproctor.docking.state/EmptyAnchorVisibility.Always|null[0]
+    enum entry WhileDragging // com.seanproctor.docking.state/EmptyAnchorVisibility.WhileDragging|null[0]
+
+    final val entries // com.seanproctor.docking.state/EmptyAnchorVisibility.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<com.seanproctor.docking.state/EmptyAnchorVisibility> // com.seanproctor.docking.state/EmptyAnchorVisibility.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): com.seanproctor.docking.state/EmptyAnchorVisibility // com.seanproctor.docking.state/EmptyAnchorVisibility.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<com.seanproctor.docking.state/EmptyAnchorVisibility> // com.seanproctor.docking.state/EmptyAnchorVisibility.values|values#static(){}[0]
+}
+
 final enum class com.seanproctor.docking.state/LayoutChangeKind : kotlin/Enum<com.seanproctor.docking.state/LayoutChangeKind> { // com.seanproctor.docking.state/LayoutChangeKind|null[0]
     enum entry Added // com.seanproctor.docking.state/LayoutChangeKind.Added|null[0]
     enum entry Persisted // com.seanproctor.docking.state/LayoutChangeKind.Persisted|null[0]
@@ -149,6 +160,7 @@ abstract interface com.seanproctor.docking.spi/DockingRenderer { // com.seanproc
     abstract fun MissingDockable(com.seanproctor.docking.model/DockableId, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.MissingDockable|MissingDockable(com.seanproctor.docking.model.DockableId;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
     abstract fun SplitDivider(com.seanproctor.docking.spi/DividerModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.SplitDivider|SplitDivider(com.seanproctor.docking.spi.DividerModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
     abstract fun TabStrip(com.seanproctor.docking.spi/TabStripModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.TabStrip|TabStrip(com.seanproctor.docking.spi.TabStripModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
+    open fun CollapsedAnchor(com.seanproctor.docking.spi/CollapsedAnchorModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.CollapsedAnchor|CollapsedAnchor(com.seanproctor.docking.spi.CollapsedAnchorModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
 }
 
 sealed interface com.seanproctor.docking.drag/DropTarget { // com.seanproctor.docking.drag/DropTarget|null[0]
@@ -904,6 +916,17 @@ final class com.seanproctor.docking.persistence/PersistedWindow { // com.seanpro
     }
 }
 
+final class com.seanproctor.docking.spi/CollapsedAnchorModel { // com.seanproctor.docking.spi/CollapsedAnchorModel|null[0]
+    constructor <init>(com.seanproctor.docking.model/AnchorId, com.seanproctor.docking.model/SplitOrientation, kotlin/Boolean) // com.seanproctor.docking.spi/CollapsedAnchorModel.<init>|<init>(com.seanproctor.docking.model.AnchorId;com.seanproctor.docking.model.SplitOrientation;kotlin.Boolean){}[0]
+
+    final val anchorId // com.seanproctor.docking.spi/CollapsedAnchorModel.anchorId|{}anchorId[0]
+        final fun <get-anchorId>(): com.seanproctor.docking.model/AnchorId // com.seanproctor.docking.spi/CollapsedAnchorModel.anchorId.<get-anchorId>|<get-anchorId>(){}[0]
+    final val isDropTarget // com.seanproctor.docking.spi/CollapsedAnchorModel.isDropTarget|{}isDropTarget[0]
+        final fun <get-isDropTarget>(): kotlin/Boolean // com.seanproctor.docking.spi/CollapsedAnchorModel.isDropTarget.<get-isDropTarget>|<get-isDropTarget>(){}[0]
+    final val orientation // com.seanproctor.docking.spi/CollapsedAnchorModel.orientation|{}orientation[0]
+        final fun <get-orientation>(): com.seanproctor.docking.model/SplitOrientation // com.seanproctor.docking.spi/CollapsedAnchorModel.orientation.<get-orientation>|<get-orientation>(){}[0]
+}
+
 final class com.seanproctor.docking.spi/DividerModel { // com.seanproctor.docking.spi/DividerModel|null[0]
     constructor <init>(com.seanproctor.docking.model/SplitOrientation, kotlin/Boolean, androidx.compose.ui/Modifier) // com.seanproctor.docking.spi/DividerModel.<init>|<init>(com.seanproctor.docking.model.SplitOrientation;kotlin.Boolean;androidx.compose.ui.Modifier){}[0]
 
@@ -1112,12 +1135,18 @@ final class com.seanproctor.docking.state/DockableSpec { // com.seanproctor.dock
 }
 
 final class com.seanproctor.docking.state/DockingSettings { // com.seanproctor.docking.state/DockingSettings|null[0]
-    constructor <init>(com.seanproctor.docking.model/TabPreference = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference){}[0]
+    constructor <init>(com.seanproctor.docking.model/TabPreference = ..., androidx.compose.ui.unit/Dp = ..., com.seanproctor.docking.state/EmptyAnchorVisibility = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference;androidx.compose.ui.unit.Dp;com.seanproctor.docking.state.EmptyAnchorVisibility){}[0]
 
     final val alwaysDisplayTabs // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs|{}alwaysDisplayTabs[0]
         final fun <get-alwaysDisplayTabs>(): kotlin/Boolean // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs.<get-alwaysDisplayTabs>|<get-alwaysDisplayTabs>(){}[0]
+    final val collapsedAnchorThickness // com.seanproctor.docking.state/DockingSettings.collapsedAnchorThickness|{}collapsedAnchorThickness[0]
+        final fun <get-collapsedAnchorThickness>(): androidx.compose.ui.unit/Dp // com.seanproctor.docking.state/DockingSettings.collapsedAnchorThickness.<get-collapsedAnchorThickness>|<get-collapsedAnchorThickness>(){}[0]
+    final val collapsesEmptyAnchors // com.seanproctor.docking.state/DockingSettings.collapsesEmptyAnchors|{}collapsesEmptyAnchors[0]
+        final fun <get-collapsesEmptyAnchors>(): kotlin/Boolean // com.seanproctor.docking.state/DockingSettings.collapsesEmptyAnchors.<get-collapsesEmptyAnchors>|<get-collapsesEmptyAnchors>(){}[0]
     final val defaultTabPreference // com.seanproctor.docking.state/DockingSettings.defaultTabPreference|{}defaultTabPreference[0]
         final fun <get-defaultTabPreference>(): com.seanproctor.docking.model/TabPreference // com.seanproctor.docking.state/DockingSettings.defaultTabPreference.<get-defaultTabPreference>|<get-defaultTabPreference>(){}[0]
+    final val emptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility|{}emptyAnchorVisibility[0]
+        final fun <get-emptyAnchorVisibility>(): com.seanproctor.docking.state/EmptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility.<get-emptyAnchorVisibility>|<get-emptyAnchorVisibility>(){}[0]
 }
 
 final class com.seanproctor.docking.ui/DockBoundsRegistry // com.seanproctor.docking.ui/DockBoundsRegistry|null[0]
@@ -1301,6 +1330,7 @@ final val com.seanproctor.docking.spi/LocalDockingRenderer // com.seanproctor.do
     final fun <get-LocalDockingRenderer>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.spi/DockingRenderer> // com.seanproctor.docking.spi/LocalDockingRenderer.<get-LocalDockingRenderer>|<get-LocalDockingRenderer>(){}[0]
 final val com.seanproctor.docking.spi/LocalDockingTheme // com.seanproctor.docking.spi/LocalDockingTheme|{}LocalDockingTheme[0]
     final fun <get-LocalDockingTheme>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.spi/DockingTheme> // com.seanproctor.docking.spi/LocalDockingTheme.<get-LocalDockingTheme>|<get-LocalDockingTheme>(){}[0]
+final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop|#static{}com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop|#static{}com_seanproctor_docking_spi_DebugDockingRenderer$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop|#static{}com_seanproctor_docking_spi_DividerModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop|#static{}com_seanproctor_docking_spi_DockingTheme$stableprop[0]
@@ -1380,6 +1410,7 @@ final fun com.seanproctor.docking.persistence/com_seanproctor_docking_persistenc
 final fun com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop_getter(): kotlin/Int // com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop_getter|com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.persistence/rememberAutoPersist(com.seanproctor.docking.state/DockState, com.seanproctor.docking.persistence/LayoutStorage, kotlin.time/Duration, kotlin/Boolean, com.seanproctor.docking.persistence/DockableResolver?, kotlin.collections/List<com.seanproctor.docking.persistence/LayoutMigration>?, kotlin/Boolean, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // com.seanproctor.docking.persistence/rememberAutoPersist|rememberAutoPersist(com.seanproctor.docking.state.DockState;com.seanproctor.docking.persistence.LayoutStorage;kotlin.time.Duration;kotlin.Boolean;com.seanproctor.docking.persistence.DockableResolver?;kotlin.collections.List<com.seanproctor.docking.persistence.LayoutMigration>?;kotlin.Boolean;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]
 final fun com.seanproctor.docking.persistence/rememberAutoPersist(com.seanproctor.docking.state/DockState, com.seanproctor.docking.persistence/LayoutStorage, kotlin.time/Duration?, kotlin/Boolean, com.seanproctor.docking.persistence/DockableResolver?, kotlin.collections/List<com.seanproctor.docking.persistence/LayoutMigration>?, kotlin/Boolean, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // com.seanproctor.docking.persistence/rememberAutoPersist|rememberAutoPersist(com.seanproctor.docking.state.DockState;com.seanproctor.docking.persistence.LayoutStorage;kotlin.time.Duration?;kotlin.Boolean;com.seanproctor.docking.persistence.DockableResolver?;kotlin.collections.List<com.seanproctor.docking.persistence.LayoutMigration>?;kotlin.Boolean;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]
+final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter|com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter|com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop_getter|com_seanproctor_docking_spi_DividerModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop_getter|com_seanproctor_docking_spi_DockingTheme$stableprop_getter(){}[0]

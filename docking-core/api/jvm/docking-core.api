@@ -772,9 +772,18 @@ public final class com/seanproctor/docking/persistence/PersistedWindow$Companion
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
+public final class com/seanproctor/docking/spi/CollapsedAnchorModel {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Lcom/seanproctor/docking/model/SplitOrientation;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAnchorId-mzEuSDo ()Ljava/lang/String;
+	public final fun getOrientation ()Lcom/seanproctor/docking/model/SplitOrientation;
+	public final fun isDropTarget ()Z
+}
+
 public final class com/seanproctor/docking/spi/DebugDockingRenderer : com/seanproctor/docking/spi/DockingRenderer {
 	public static final field $stable I
 	public static final field INSTANCE Lcom/seanproctor/docking/spi/DebugDockingRenderer;
+	public fun CollapsedAnchor (Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DockableHeader (Lcom/seanproctor/docking/spi/HeaderModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DockingHandle (Lcom/seanproctor/docking/spi/HandleModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun DragPreview (Ljava/lang/String;Landroidx/compose/ui/graphics/painter/Painter;Landroidx/compose/runtime/Composer;I)V
@@ -794,6 +803,7 @@ public final class com/seanproctor/docking/spi/DividerModel {
 }
 
 public abstract interface class com/seanproctor/docking/spi/DockingRenderer {
+	public fun CollapsedAnchor (Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun DockableHeader (Lcom/seanproctor/docking/spi/HeaderModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun DockingHandle (Lcom/seanproctor/docking/spi/HandleModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun DragPreview (Ljava/lang/String;Landroidx/compose/ui/graphics/painter/Painter;Landroidx/compose/runtime/Composer;I)V
@@ -802,6 +812,10 @@ public abstract interface class com/seanproctor/docking/spi/DockingRenderer {
 	public abstract fun MissingDockable-XtkTFH4 (Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun SplitDivider (Lcom/seanproctor/docking/spi/DividerModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun TabStrip (Lcom/seanproctor/docking/spi/TabStripModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+}
+
+public final class com/seanproctor/docking/spi/DockingRenderer$DefaultImpls {
+	public static fun CollapsedAnchor (Lcom/seanproctor/docking/spi/DockingRenderer;Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 }
 
 public final class com/seanproctor/docking/spi/DockingRendererKt {
@@ -1169,11 +1183,21 @@ public final class com/seanproctor/docking/state/DockingEvent$WindowOpened : com
 
 public final class com/seanproctor/docking/state/DockingSettings {
 	public static final field $stable I
-	public fun <init> ()V
-	public fun <init> (Lcom/seanproctor/docking/model/TabPreference;)V
-	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getAlwaysDisplayTabs ()Z
+	public final fun getCollapsedAnchorThickness-D9Ej5fM ()F
+	public final fun getCollapsesEmptyAnchors ()Z
 	public final fun getDefaultTabPreference ()Lcom/seanproctor/docking/model/TabPreference;
+	public final fun getEmptyAnchorVisibility ()Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
+}
+
+public final class com/seanproctor/docking/state/EmptyAnchorVisibility : java/lang/Enum {
+	public static final field Always Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
+	public static final field WhileDragging Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
+	public static fun values ()[Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
 }
 
 public final class com/seanproctor/docking/state/LayoutChangeKind : java/lang/Enum {

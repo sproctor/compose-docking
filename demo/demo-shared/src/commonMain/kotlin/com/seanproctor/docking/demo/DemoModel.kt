@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import com.seanproctor.docking.layout.dockLayout
+import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockRegion
 import kotlin.random.Random
@@ -145,6 +146,9 @@ class PropsDemoState {
 }
 
 val propsDemo: PropsDemoState = PropsDemoState()
+
+/** The west column's anchor, so the area survives closing Panel Three. */
+val DemoToolsAnchor: AnchorId = AnchorId("tools")
 
 // ---------- The default layout (MainFrame's WindowLayoutBuilder) ----------
 
