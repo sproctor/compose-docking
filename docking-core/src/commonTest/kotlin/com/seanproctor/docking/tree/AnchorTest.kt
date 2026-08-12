@@ -5,6 +5,11 @@ import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.NodeIdGenerator
+import com.seanproctor.docking.model.DockableOptions
+import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.state.DockTarget
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -134,3 +139,45 @@ private fun findTabsContaining(root: DockNode, leafId: com.seanproctor.docking.m
             findTabsContaining(root.first, leafId) ?: findTabsContaining(root.second, leafId)
         else -> null
     }
+
+class EnsureAnchorTest {
+
+    private fun state() = DockState {
+        dockable("a", title = { "A" }) {}
+        dockable("b", title = { "B" }, options = DockableOptions(anchor = TOOLS)) {}
+    }
+
+    @Test
+    fun addsAMissingAnchorToTheWindowRoot() {
+        val state = state()
+        state.dock(A)
+        // A layout restored from a snapshot that predates the area: no placeholder, no carrier.
+        assertTrue(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
+        val split = assertIs<DockNode.Split>(state.layout.mainWindow.root)
+        assertEquals(TOOLS, assertIs<DockNode.Anchor>(split.first).anchorId)
+        assertEquals(0.3f, split.proportion)
+    }
+
+    @Test
+    fun leavesAnExistingPlaceholderAlone() {
+        val state = state()
+        state.dock(A)
+        assertTrue(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
+        val before = state.layout
+        // Idempotent: calling it again must not stack a second empty area onto the layout.
+        assertFalse(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
+        assertEquals(before, state.layout)
+    }
+
+    @Test
+    fun leavesAnOccupiedAreaAlone() {
+        val state = state()
+        state.dock(A)
+        state.dock(B, DockTarget.Root(), DockRegion.West, 0.3f)
+        val before = state.layout
+        // The area exists because a dockable carrying it is docked; adding a placeholder
+        // would give the layout two of the same area.
+        assertFalse(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
+        assertEquals(before, state.layout)
+    }
+}

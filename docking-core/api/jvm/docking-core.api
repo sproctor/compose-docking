@@ -928,6 +928,8 @@ public final class com/seanproctor/docking/state/DockState {
 	public final fun closeWindow-CsocBQc (Ljava/lang/String;)V
 	public final fun dock-XtkTFH4 (Ljava/lang/String;Lcom/seanproctor/docking/state/DockTarget;Lcom/seanproctor/docking/model/DockRegion;Ljava/lang/Float;)V
 	public static synthetic fun dock-XtkTFH4$default (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Lcom/seanproctor/docking/state/DockTarget;Lcom/seanproctor/docking/model/DockRegion;Ljava/lang/Float;ILjava/lang/Object;)V
+	public final fun ensureAnchor-E1flyr4 (Ljava/lang/String;Lcom/seanproctor/docking/model/DockRegion;F)Z
+	public static synthetic fun ensureAnchor-E1flyr4$default (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Lcom/seanproctor/docking/model/DockRegion;FILjava/lang/Object;)Z
 	public final fun getActiveDockable-NZiJRpQ ()Ljava/lang/String;
 	public final fun getEvents ()Lkotlinx/coroutines/flow/SharedFlow;
 	public final fun getLayout ()Lcom/seanproctor/docking/model/DockLayout;
