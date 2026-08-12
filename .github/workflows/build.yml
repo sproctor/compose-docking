@@ -12,6 +12,11 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Neither job writes anything back, and stating that here keeps it true if the repository
+# default is ever widened to read/write.
+permissions:
+  contents: read
+
 jobs:
   check:
     # Everything that is not Apple. Kotlin/Native's iOS targets are *disabled* on a Linux
@@ -19,7 +24,12 @@ jobs:
     # so nothing here says anything about iOS, and the job below is what covers it.
     runs-on: ubuntu-latest
     steps:
+      # Gradle runs this repository's own build logic, plus every plugin it resolves, so
+      # leaving the checkout token in .git/config would put it within reach of all of them.
+      # Nothing here talks to git again after the checkout.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -39,7 +49,10 @@ jobs:
     # pipeline by several minutes.
     runs-on: macos-latest
     steps:
+      # See above: no credential left behind for the build to pick up.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
