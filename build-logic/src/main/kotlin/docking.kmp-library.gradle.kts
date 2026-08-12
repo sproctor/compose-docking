@@ -41,3 +41,21 @@ kotlin {
         binaries.executable()
     }
 }
+
+// Declaring that executable also hangs the browser bundling chain off `assemble` -
+// Binaryen's optimizer and then a webpack run - whose output is a browser application
+// built out of a library. Nothing consumes it: dependents resolve the klib, and the demo
+// that is a real browser application builds its own bundle. So the chain is turned off
+// here, leaving the executable itself declared, which is all the test check above wants.
+//
+// The whole chain has to go, not just the distribution at the end of it: a disabled task
+// is skipped but its dependencies still run, so switching off only the last one would
+// leave the two expensive steps behind it running for nothing.
+tasks.matching {
+    it.name in setOf(
+        "compileProductionExecutableKotlinWasmJsOptimize",
+        "wasmJsProductionExecutableCompileSync",
+        "wasmJsBrowserProductionWebpack",
+        "wasmJsBrowserDistribution",
+    )
+}.configureEach { enabled = false }

@@ -24,3 +24,15 @@ kotlin {
         }
     }
 }
+
+// Same as the libraries (see docking.kmp-library.gradle.kts): the executable is declared
+// for the Compose test check, but this module is shared demo code rather than the browser
+// application. demo-material3 is what builds a bundle anyone loads.
+tasks.matching {
+    it.name in setOf(
+        "compileProductionExecutableKotlinWasmJsOptimize",
+        "wasmJsProductionExecutableCompileSync",
+        "wasmJsBrowserProductionWebpack",
+        "wasmJsBrowserDistribution",
+    )
+}.configureEach { enabled = false }
