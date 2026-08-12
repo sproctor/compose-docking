@@ -9,6 +9,9 @@ kotlin {
     jvm()
     wasmJs {
         browser()
+        // Compose 1.12 checks that a wasmJs target carrying Compose UI tests bundles an
+        // executable, or the Skiko runtime the tests need is never loaded (CMP-4906).
+        binaries.executable()
     }
 
     sourceSets {

@@ -29,12 +29,15 @@ kotlin {
     jvm()
     android {
         namespace = "com.seanproctor." + project.name.replace("-", ".")
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 21
     }
     iosArm64()
     iosSimulatorArm64()
     wasmJs {
         browser()
+        // Compose 1.12 checks that a wasmJs target carrying Compose UI tests bundles an
+        // executable, or the Skiko runtime the tests need is never loaded (CMP-4906).
+        binaries.executable()
     }
 }
