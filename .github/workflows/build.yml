@@ -5,11 +5,31 @@ on:
     branches: [main]
   pull_request:
 
+# A branch only needs its newest commit checked, so a push supersedes whatever was still
+# running for the same ref. Pushes to main are left alone: every commit there gets its own
+# run, and cancelling one would leave a gap in the history of what was green.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Neither job writes anything back, and stating that here keeps it true if the repository
+# default is ever widened to read/write.
+permissions:
+  contents: read
+
 jobs:
   check:
+    # Everything that is not Apple. Kotlin/Native's iOS targets are *disabled* on a Linux
+    # host rather than failing on it - the tasks report success without producing a klib -
+    # so nothing here says anything about iOS, and the job below is what covers it.
     runs-on: ubuntu-latest
     steps:
+      # Gradle runs this repository's own build logic, plus every plugin it resolves, so
+      # leaving the checkout token in .git/config would put it within reach of all of them.
+      # Nothing here talks to git again after the checkout.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -19,22 +39,36 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-provider: basic
-      - name: ABI check and JVM tests
-        run: ./gradlew checkKotlinAbi :docking-core:jvmTest :docking-material3:assemble :docking-jewel:assemble
+      - name: ABI check, JVM tests, and every non-Apple target
+        run: ./gradlew checkKotlinAbi :docking-core:jvmTest assemble
 
-  full-build:
-    # macOS compiles/links the iOS klibs as well.
+  ios:
+    # Only the part that actually needs a Mac. This used to run a full `assemble`, which
+    # rebuilt the JVM, Android, wasm and demo targets the Linux job had already covered -
+    # on the runner that bills at ten times the rate, and it was the slowest thing in the
+    # pipeline by several minutes.
     runs-on: macos-latest
     steps:
+      # See above: no credential left behind for the build to pick up.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-      # v6 defaults cache-provider to 'enhanced', the commercial gradle-actions-caching
-      # component; 'basic' is the open-source implementation over the GitHub Actions cache.
+      # See above: 'basic' keeps caching on the open-source implementation.
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-provider: basic
-      - name: Assemble all targets
-        run: ./gradlew assemble
+      # ~/.konan is deliberately NOT cached. It holds the Kotlin/Native compiler and its
+      # platform libraries, which setup-gradle does not cover, so caching it looks like an
+      # obvious win - but measured over two runs each it is a net loss of roughly 75s:
+      #
+      #   cache miss:  152s compiling + 15s saving
+      #   cache hit:    22s restoring (359 MB) + 222s compiling
+      #
+      # Restoring the tree costs more than fetching the distribution does, and the build is
+      # slower afterwards besides. Letting Gradle download it is simply quicker here.
+      - name: Compile the iOS klibs
+        run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary

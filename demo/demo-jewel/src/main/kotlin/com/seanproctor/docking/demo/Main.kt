@@ -41,6 +41,7 @@ import com.seanproctor.docking.persistence.rememberAutoPersist
 import com.seanproctor.docking.persistence.restoreLayout
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockingSettings
+import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.rememberDockState
@@ -65,7 +66,11 @@ fun main(args: Array<String>) {
     application {
         val state = rememberDockState(
             settings = DockingSettings(
-                if (alwaysUseTabs) TabPreference.BottomAlways else TabPreference.Bottom,
+                defaultTabPreference = if (alwaysUseTabs) TabPreference.BottomAlways else TabPreference.Bottom,
+                // Close Panel Three (the west column's anchor) and its area vanishes, then
+                // comes back as a strip the moment you pick up another panel to drag.
+                collapsedAnchorThickness = 24.dp,
+                emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging,
             ),
             initialLayout = { demoLayout(alwaysUseTabs) },
         ) { }

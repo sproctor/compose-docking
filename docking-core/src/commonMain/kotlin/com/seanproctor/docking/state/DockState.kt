@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -27,6 +28,9 @@ import com.seanproctor.docking.tree.findNode
 import com.seanproctor.docking.tree.findTabsContaining
 import com.seanproctor.docking.tree.isRegionAllowed
 import com.seanproctor.docking.tree.maximizeInLayout
+import com.seanproctor.docking.tree.findAnchorNode
+import com.seanproctor.docking.tree.dockableIds
+import com.seanproctor.docking.tree.splitWithNode
 import com.seanproctor.docking.tree.moveTab
 import com.seanproctor.docking.tree.placementOf
 import com.seanproctor.docking.tree.insertTabAt
@@ -268,6 +272,44 @@ public class DockState(
     /** Double-click-divider reset to an even split. */
     public fun resetSplitProportion(nodeId: NodeId) {
         setSplitProportion(nodeId, 0.5f)
+    }
+
+    /**
+     * Makes sure [anchorId] names somewhere in the main window, adding a placeholder for it at
+     * [region] of the window root if it is missing. Returns true when one was added.
+     *
+     * Idempotent, and does nothing when the anchor is already accounted for - either its
+     * placeholder is in the tree, or a dockable carrying it is docked, in which case the area
+     * exists and re-adding it would give the layout two of the same area.
+     *
+     * This is the counterpart to declaring anchors in [com.seanproctor.docking.layout.dockLayout]:
+     * a layout restored from JSON replaces the one the builder made, so a snapshot saved before an
+     * area was introduced - or by a version of the app that did not have it - comes back without
+     * it. Call this after
+     * [restoreLayout][com.seanproctor.docking.persistence.restoreLayout] for each area the
+     * application expects to have, and the missing ones are filled in without disturbing the rest.
+     */
+    public fun ensureAnchor(
+        anchorId: AnchorId,
+        region: DockRegion,
+        proportion: Float = 0.25f,
+    ): Boolean {
+        val window = layout.mainWindow
+        val root = window.root
+        if (root != null &&
+            (root.findAnchorNode(anchorId) != null || root.dockableIds().any { registry.anchorOf(it) == anchorId })
+        ) {
+            return false
+        }
+        val ctx = treeContext()
+        val anchorNode = DockNode.Anchor(nodeIds.next(), anchorId)
+        val newRoot = if (root == null) {
+            anchorNode
+        } else {
+            ctx.splitWithNode(root, anchorNode, region, proportion)
+        }
+        layout = layout.replaceWindow(window.copy(root = newRoot))
+        return true
     }
 
     /**

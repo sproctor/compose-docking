@@ -29,12 +29,33 @@ kotlin {
     jvm()
     android {
         namespace = "com.seanproctor." + project.name.replace("-", ".")
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 21
     }
     iosArm64()
     iosSimulatorArm64()
     wasmJs {
         browser()
+        // Compose 1.12 checks that a wasmJs target carrying Compose UI tests bundles an
+        // executable, or the Skiko runtime the tests need is never loaded (CMP-4906).
+        binaries.executable()
     }
 }
+
+// Declaring that executable also hangs the browser bundling chain off `assemble` -
+// Binaryen's optimizer and then a webpack run - whose output is a browser application
+// built out of a library. Nothing consumes it: dependents resolve the klib, and the demo
+// that is a real browser application builds its own bundle. So the chain is turned off
+// here, leaving the executable itself declared, which is all the test check above wants.
+//
+// The whole chain has to go, not just the distribution at the end of it: a disabled task
+// is skipped but its dependencies still run, so switching off only the last one would
+// leave the two expensive steps behind it running for nothing.
+tasks.matching {
+    it.name in setOf(
+        "compileProductionExecutableKotlinWasmJsOptimize",
+        "wasmJsProductionExecutableCompileSync",
+        "wasmJsBrowserProductionWebpack",
+        "wasmJsBrowserDistribution",
+    )
+}.configureEach { enabled = false }

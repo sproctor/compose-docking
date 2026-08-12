@@ -14,6 +14,13 @@ edge, so it stops consuming space but stays one click away. Clicking the button 
 the panel back over the layout temporarily; dismissing it (clicking elsewhere, or the
 window losing focus) tucks it away again. Restoring it puts it back in the tree.
 
+Not to be confused with `DockingSettings.collapsedAnchorThickness`, which also draws a
+strip but answers a different question: that one is about an *empty area* keeping its
+slot cheaply, with no dockable involved and nothing to slide out. This feature is about
+a *live dockable* leaving the layout and staying reachable. They can coexist - a parked
+dockable's area may well be the one that then collapses to a strip - but the edge
+buttons, the slide-out, and the persisted parked state are all still to be designed.
+
 ### Why the first attempt was wrong
 
 - **The name.** "Auto-hide" is ModernDocking's term, inherited from Visual Studio. Nothing

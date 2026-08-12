@@ -123,7 +123,12 @@ a JDK 25+ (JetBrains Runtime recommended).
   bidirectional docking-style filtering, tab-strip insertion, tearing off into floating
   windows, and Esc-cancel with full layout restore.
 - **Anchors** give layouts named regions that survive close-all: a placeholder stays in
-  the tree when the last anchored dockable leaves, and reopening docks back into it.
+  the tree when the last anchored dockable leaves, and reopening docks back into it. Set
+  `DockingSettings(collapsedAnchorThickness = 24.dp)` to draw an empty one as a strip
+  instead of a full-size pane, so the area gives its space back while it is empty and
+  still takes a drop, and add `emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging`
+  to hide the strip entirely until a drag starts - an empty area then costs nothing at all
+  until there is something to drop into it.
 - **Persistence** is JSON (`kotlinx.serialization`) with a version field and migration
   hooks; unknown dockables in a saved layout are kept as placeholders and fill in when
   registered (or are created on demand via a `DockableResolver`). Named layout snapshots
