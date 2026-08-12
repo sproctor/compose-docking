@@ -264,6 +264,17 @@ class CollapsedAnchorTest {
             "refilling should restore the column: $withPanels -> ${contentWidth()}",
         )
         onNodeWithText("content-b").assertExists()
+
+        // Collapsing the column as one area must not have cost it the second placeholder:
+        // both halves are still their own area, and refilling the other one brings the
+        // column all the way back to the layout it started as.
+        state.dock(C, DockTarget.Anchor(PROPS))
+        waitForIdle()
+        assertTrue(
+            abs(contentWidth() - withPanels) <= 1f,
+            "the column should be back as it started: $withPanels -> ${contentWidth()}",
+        )
+        onNodeWithText("content-c").assertExists()
     }
 
     @Test

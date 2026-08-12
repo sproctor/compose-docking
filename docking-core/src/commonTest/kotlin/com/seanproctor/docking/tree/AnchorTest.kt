@@ -151,9 +151,15 @@ class EnsureAnchorTest {
     fun makesTheAnchorTheRootOfAnEmptyWindow() {
         val state = state()
         // Nothing is docked, so there is no root to split against: the placeholder becomes
-        // the root itself and the first dockable to arrive docks around it.
+        // the root itself.
         assertTrue(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
         assertEquals(TOOLS, assertIs<DockNode.Anchor>(state.layout.mainWindow.root).anchorId)
+
+        // A root that is nothing but a placeholder still has to behave like one, so the
+        // first dockable to arrive splits against it rather than replacing it.
+        state.dock(A, DockTarget.Root(), DockRegion.East, 0.7f)
+        assertTrue(state.isOpen(A))
+        assertNotNull(state.layout.mainWindow.root?.findAnchorNode(TOOLS), "the area should survive")
     }
 
     @Test
@@ -165,6 +171,9 @@ class EnsureAnchorTest {
         val split = assertIs<DockNode.Split>(state.layout.mainWindow.root)
         assertEquals(TOOLS, assertIs<DockNode.Anchor>(split.first).anchorId)
         assertEquals(0.3f, split.proportion)
+        // Filling the gap must not cost the layout what was already in it.
+        assertTrue(state.isOpen(A), "the docked dockable should have survived")
+        assertEquals(A, assertIs<DockNode.Leaf>(split.second).dockableId)
     }
 
     @Test
