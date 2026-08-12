@@ -28,7 +28,9 @@ import kotlin.test.assertTrue
 
 private val A = DockableId("a")
 private val B = DockableId("b")
+private val C = DockableId("c")
 private val TOOLS = AnchorId("tools")
+private val PROPS = AnchorId("props")
 
 private const val WINDOW = 400
 private const val STRIP = 24
@@ -65,6 +67,38 @@ class CollapsedAnchorTest {
                 title = { "Beta" },
                 options = DockableOptions(anchor = TOOLS),
             ) { Box(Modifier.fillMaxSize()) { BasicText("content-b") } }
+        }
+    }
+
+    /**
+     * `a` fills the east. `b` and `c` carry *different* anchors and share the 25% west
+     * column between them, so undocking both leaves a split of two placeholders - a
+     * subtree that is empty without any single node of it being the empty area.
+     */
+    private fun siblingAnchorState(
+        strip: Int,
+        visibility: EmptyAnchorVisibility = EmptyAnchorVisibility.Always,
+    ): DockState = DockState(
+        initialLayout = dockLayout {
+            mainWindow {
+                dock("a")
+                dock("b", region = DockRegion.West, proportion = 0.25f)
+                dock("c", target = "b", region = DockRegion.South, proportion = 0.5f)
+            }
+        },
+        settings = DockingSettings(
+            collapsedAnchorThickness = strip.dp,
+            emptyAnchorVisibility = visibility,
+        ),
+    ) {
+        dockable("a", title = { "Alpha" }) {
+            Box(Modifier.fillMaxSize().testTag("pane-a")) { BasicText("content-a") }
+        }
+        dockable("b", title = { "Beta" }, options = DockableOptions(anchor = TOOLS)) {
+            Box(Modifier.fillMaxSize()) { BasicText("content-b") }
+        }
+        dockable("c", title = { "Gamma" }, options = DockableOptions(anchor = PROPS)) {
+            Box(Modifier.fillMaxSize()) { BasicText("content-c") }
         }
     }
 
@@ -172,6 +206,64 @@ class CollapsedAnchorTest {
             abs(widthMidDrag - expected) <= 1f,
             "the area should reappear as a strip for the drag (expected ~$expected, was $widthMidDrag)",
         )
+    }
+
+    @Test
+    fun twoEmptySiblingAnchorsCostOneStripBetweenThem() = runComposeUiTest {
+        val state = siblingAnchorState(strip = STRIP)
+        setContent { DockArea(state, modifier = Modifier.size(WINDOW.dp)) }
+
+        state.undock(B)
+        state.undock(C)
+        waitForIdle()
+
+        // Both halves of the west column are placeholders now, so the column as a whole is
+        // the empty area and the outer split is what collapses it. Pinning inside the column
+        // instead would give one placeholder the strip and the other everything left over -
+        // exactly the oversized empty pane this is all meant to get rid of.
+        val expected = WINDOW - STRIP - DividerThickness.value
+        assertTrue(
+            abs(contentWidth() - expected) <= 1f,
+            "a split of two empty anchors should cost one strip (~$expected), was ${contentWidth()}",
+        )
+    }
+
+    @Test
+    fun aHiddenSiblingPairLeavesNoDividersBehind() = runComposeUiTest {
+        val state = siblingAnchorState(strip = STRIP, visibility = EmptyAnchorVisibility.WhileDragging)
+        setContent { DockArea(state, modifier = Modifier.size(WINDOW.dp)) }
+
+        state.undock(B)
+        state.undock(C)
+        waitForIdle()
+
+        // Neither the column's own divider nor the one splitting the two placeholders inside
+        // it may survive: a hidden area costs nothing, however deep it goes.
+        assertTrue(
+            abs(contentWidth() - WINDOW) <= 1f,
+            "a hidden subtree should cost nothing, neighbour was ${contentWidth()} of $WINDOW",
+        )
+    }
+
+    @Test
+    fun aRefilledSiblingAnchorTakesItsColumnBack() = runComposeUiTest {
+        val state = siblingAnchorState(strip = STRIP)
+        setContent { DockArea(state, modifier = Modifier.size(WINDOW.dp)) }
+        val withPanels = contentWidth()
+
+        state.undock(B)
+        state.undock(C)
+        waitForIdle()
+        // The collapsed column is still a live area: its placeholders were kept, so docking
+        // into one of them reopens the column at the proportion it always had.
+        state.dock(B, DockTarget.Anchor(TOOLS))
+        waitForIdle()
+
+        assertTrue(
+            abs(contentWidth() - withPanels) <= 1f,
+            "refilling should restore the column: $withPanels -> ${contentWidth()}",
+        )
+        onNodeWithText("content-b").assertExists()
     }
 
     @Test

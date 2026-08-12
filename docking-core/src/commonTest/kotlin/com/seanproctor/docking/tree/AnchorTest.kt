@@ -148,6 +148,15 @@ class EnsureAnchorTest {
     }
 
     @Test
+    fun makesTheAnchorTheRootOfAnEmptyWindow() {
+        val state = state()
+        // Nothing is docked, so there is no root to split against: the placeholder becomes
+        // the root itself and the first dockable to arrive docks around it.
+        assertTrue(state.ensureAnchor(TOOLS, DockRegion.West, 0.3f))
+        assertEquals(TOOLS, assertIs<DockNode.Anchor>(state.layout.mainWindow.root).anchorId)
+    }
+
+    @Test
     fun addsAMissingAnchorToTheWindowRoot() {
         val state = state()
         state.dock(A)

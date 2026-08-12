@@ -103,13 +103,17 @@ public fun DockArea(
 internal fun DockAreaScope.RenderNode(
     node: DockNode,
     modifier: Modifier = Modifier,
-    /** Set by [RenderSplit] for an anchor whose slot it collapsed to a strip. */
+    /**
+     * The axis of the strip this node is being drawn inside, set by [RenderSplit] for an
+     * empty area whose slot it collapsed. A split passes it on to its own sides, so the
+     * anchors under a collapsed subtree are drawn as strips rather than full placeholders.
+     */
     collapsedIn: SplitOrientation? = null,
 ) {
     when (node) {
         is DockNode.Leaf -> RenderLeaf(node, showHeader = true, modifier)
         is DockNode.Anchor -> RenderAnchor(node, modifier, collapsedIn)
-        is DockNode.Split -> RenderSplit(node, modifier)
+        is DockNode.Split -> RenderSplit(node, modifier, collapsedIn)
         is DockNode.Tabs -> RenderTabs(node, modifier)
     }
 }
@@ -135,17 +139,27 @@ private fun DockAreaScope.RenderAnchor(
 }
 
 /**
- * The fixed thickness this child of a split takes along the split's axis, or null when it
- * takes its proportional share as usual. Only an empty anchor is ever pinned to a size:
- * [Dp.Hairline]-thin down to zero when it is hidden until a drag, or the configured strip.
+ * True when [node] holds no dockables at all - an anchor's placeholder, or a split of
+ * nothing but those. Collapsing is a property of the whole subtree, not of one node: a
+ * split whose two sides have both emptied out is itself an empty area, and it is that
+ * split's own parent that gives the space back.
+ */
+private fun isEmptyArea(node: DockNode): Boolean = when (node) {
+    is DockNode.Anchor -> true
+    is DockNode.Split -> isEmptyArea(node.first) && isEmptyArea(node.second)
+    is DockNode.Leaf, is DockNode.Tabs -> false
+}
+
+/**
+ * The fixed thickness an empty area takes along its split's axis, or null when empty areas
+ * are left at their proportional size. Zero while one is hidden until a drag.
  *
  * Reading the drag session here is what makes a hidden area reappear: the read is recorded
  * in composition, so starting a drag relayouts the split with the strip in it.
  * See [com.seanproctor.docking.state.DockingSettings.collapsedAnchorThickness] and
  * [com.seanproctor.docking.state.DockingSettings.emptyAnchorVisibility].
  */
-private fun DockAreaScope.anchorThickness(child: DockNode): Dp? {
-    if (child !is DockNode.Anchor) return null
+private fun DockAreaScope.emptyAreaThickness(): Dp? {
     val settings = state.settings
     if (settings.emptyAnchorVisibility == EmptyAnchorVisibility.WhileDragging &&
         state.dragController.session == null
@@ -317,7 +331,11 @@ internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel = H
 // ----- Splits -----
 
 @Composable
-internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier) {
+internal fun DockAreaScope.RenderSplit(
+    node: DockNode.Split,
+    modifier: Modifier,
+    collapsedIn: SplitOrientation? = null,
+) {
     NodeBoundsEffect(node.id)
     val currentNode by rememberUpdatedState(node)
     // The live proportion while the divider is being dragged, held as a raw state object and
@@ -375,14 +393,29 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
         }
         .pointerHoverIcon(PointerIcon.Hand)
 
-    // An empty anchor gives its share back to its neighbour and keeps only a strip - or
+    // An empty area gives its share back to its neighbour and keeps only a strip - or
     // nothing at all, when it stays hidden until a drag. The split's proportion is left
-    // alone either way, so filling the anchor restores the old geometry.
-    val firstThickness = anchorThickness(node.first)
-    val secondThickness = anchorThickness(node.second)
+    // alone either way, so filling the area restores the old geometry.
+    val stripThickness = emptyAreaThickness()
+    val firstEmpty = isEmptyArea(node.first)
+    val secondEmpty = isEmptyArea(node.second)
+    // Both sides empty means this split is itself an empty area, and its own parent has
+    // already collapsed it. Pinning a side here would hand everything the strip did not
+    // use to the other one - precisely the oversized empty pane collapsing exists to get
+    // rid of - so what is left is divided by proportion, which keeps both sides, and both
+    // drop targets, inside the strip. At the root there is no parent to collapse anything,
+    // and a layout with nothing docked in it correctly reads as empty.
+    val bothEmpty = firstEmpty && secondEmpty
+    val firstThickness = stripThickness.takeIf { firstEmpty && !bothEmpty }
+    val secondThickness = stripThickness.takeIf { secondEmpty && !bothEmpty }
     val pinned = firstThickness ?: secondThickness
-    // A hidden area must not leave its divider behind as an unexplained gap.
-    val dividerVisible = pinned == null || pinned > 0.dp
+    // Strips carry on down: the sides of a split that was itself collapsed are drawn
+    // collapsed too, along the axis of the strip they are inside rather than their own.
+    val inheritedCollapse = collapsedIn.takeIf { bothEmpty }
+    // A hidden area must not leave a divider behind as an unexplained gap - neither the one
+    // beside it, nor the ones inside it once a whole subtree has collapsed away to nothing.
+    val hidden = bothEmpty && collapsedIn != null && stripThickness == 0.dp
+    val dividerVisible = !hidden && (pinned == null || pinned > 0.dp)
     // Resizing a pinned side would move a divider against a fixed-size strip, so the
     // divider goes inert until there is something there to resize.
     val dividerModifier = if (pinned != null) Modifier else dividerDrag
@@ -393,14 +426,20 @@ internal fun DockAreaScope.RenderSplit(node: DockNode.Split, modifier: Modifier)
             .onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
         content = {
             key(node.first.id) {
-                RenderNode(node.first, collapsedIn = node.orientation.takeIf { firstThickness != null })
+                RenderNode(
+                    node.first,
+                    collapsedIn = if (firstThickness != null) node.orientation else inheritedCollapse,
+                )
             }
             renderer.SplitDivider(
                 DividerModel(node.orientation, dividerDragging, dividerModifier),
                 Modifier,
             )
             key(node.second.id) {
-                RenderNode(node.second, collapsedIn = node.orientation.takeIf { secondThickness != null })
+                RenderNode(
+                    node.second,
+                    collapsedIn = if (secondThickness != null) node.orientation else inheritedCollapse,
+                )
             }
         },
     ) { measurables, constraints ->
