@@ -90,6 +90,29 @@ public class DividerModel(
 )
 
 /**
+ * A whole pane: a dockable's header and body, or a tab group's strip and body.
+ *
+ * The other slots each render one part of a pane, so a renderer that wants to frame the pane as a
+ * unit - a border around header and body together, a shared background, an elevation - has nothing
+ * to hang it on. [DockingRenderer.paneFrame] takes this and returns the [Modifier] for the pane as
+ * a whole.
+ *
+ * [isActive] is the same focus state [HeaderModel.isActive] reports, so a frame can pick out the
+ * focused pane the way its header does. For a tab group it follows the selected tab, which is the
+ * only one whose body is on screen.
+ */
+@Stable
+public class PaneFrameModel(
+    /** The dockable the pane is showing: the leaf's, or the tab group's selected tab. */
+    public val dockableId: DockableId,
+    public val isActive: Boolean,
+    /** True when the pane is a tab group rather than a single dockable. */
+    public val isTabGroup: Boolean,
+    /** Where the strip sits when [isTabGroup], so a frame can leave that edge to it. Else null. */
+    public val tabPlacement: TabPlacement?,
+)
+
+/**
  * An empty anchor drawn as a strip. [orientation] is the axis of the split the strip sits
  * in, so it says which way the strip runs: [SplitOrientation.Horizontal] is a side column
  * collapsed to a vertical bar, [SplitOrientation.Vertical] a band collapsed to a

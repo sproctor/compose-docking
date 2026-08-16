@@ -161,6 +161,7 @@ abstract interface com.seanproctor.docking.spi/DockingRenderer { // com.seanproc
     abstract fun SplitDivider(com.seanproctor.docking.spi/DividerModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.SplitDivider|SplitDivider(com.seanproctor.docking.spi.DividerModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
     abstract fun TabStrip(com.seanproctor.docking.spi/TabStripModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.TabStrip|TabStrip(com.seanproctor.docking.spi.TabStripModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
     open fun CollapsedAnchor(com.seanproctor.docking.spi/CollapsedAnchorModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.CollapsedAnchor|CollapsedAnchor(com.seanproctor.docking.spi.CollapsedAnchorModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
+    open fun paneFrame(com.seanproctor.docking.spi/PaneFrameModel, androidx.compose.runtime/Composer?, kotlin/Int): androidx.compose.ui/Modifier // com.seanproctor.docking.spi/DockingRenderer.paneFrame|paneFrame(com.seanproctor.docking.spi.PaneFrameModel;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
 }
 
 sealed interface com.seanproctor.docking.drag/DropTarget { // com.seanproctor.docking.drag/DropTarget|null[0]
@@ -1005,6 +1006,19 @@ final class com.seanproctor.docking.spi/HeaderModel { // com.seanproctor.docking
         final fun <get-trailingActions>(): kotlin/Function2<androidx.compose.runtime/Composer, kotlin/Int, kotlin/Unit> // com.seanproctor.docking.spi/HeaderModel.trailingActions.<get-trailingActions>|<get-trailingActions>(){}[0]
 }
 
+final class com.seanproctor.docking.spi/PaneFrameModel { // com.seanproctor.docking.spi/PaneFrameModel|null[0]
+    constructor <init>(com.seanproctor.docking.model/DockableId, kotlin/Boolean, kotlin/Boolean, com.seanproctor.docking.spi/TabPlacement?) // com.seanproctor.docking.spi/PaneFrameModel.<init>|<init>(com.seanproctor.docking.model.DockableId;kotlin.Boolean;kotlin.Boolean;com.seanproctor.docking.spi.TabPlacement?){}[0]
+
+    final val dockableId // com.seanproctor.docking.spi/PaneFrameModel.dockableId|{}dockableId[0]
+        final fun <get-dockableId>(): com.seanproctor.docking.model/DockableId // com.seanproctor.docking.spi/PaneFrameModel.dockableId.<get-dockableId>|<get-dockableId>(){}[0]
+    final val isActive // com.seanproctor.docking.spi/PaneFrameModel.isActive|{}isActive[0]
+        final fun <get-isActive>(): kotlin/Boolean // com.seanproctor.docking.spi/PaneFrameModel.isActive.<get-isActive>|<get-isActive>(){}[0]
+    final val isTabGroup // com.seanproctor.docking.spi/PaneFrameModel.isTabGroup|{}isTabGroup[0]
+        final fun <get-isTabGroup>(): kotlin/Boolean // com.seanproctor.docking.spi/PaneFrameModel.isTabGroup.<get-isTabGroup>|<get-isTabGroup>(){}[0]
+    final val tabPlacement // com.seanproctor.docking.spi/PaneFrameModel.tabPlacement|{}tabPlacement[0]
+        final fun <get-tabPlacement>(): com.seanproctor.docking.spi/TabPlacement? // com.seanproctor.docking.spi/PaneFrameModel.tabPlacement.<get-tabPlacement>|<get-tabPlacement>(){}[0]
+}
+
 final class com.seanproctor.docking.spi/TabItemModel { // com.seanproctor.docking.spi/TabItemModel|null[0]
     constructor <init>(com.seanproctor.docking.model/DockableId, kotlin/String, androidx.compose.ui.graphics.painter/Painter?, kotlin/String?, kotlin/Boolean, kotlin/Function0<kotlin/Unit>, kotlin/Function2<androidx.compose.runtime/Composer, kotlin/Int, kotlin/Unit>, androidx.compose.ui/Modifier, kotlin/Float) // com.seanproctor.docking.spi/TabItemModel.<init>|<init>(com.seanproctor.docking.model.DockableId;kotlin.String;androidx.compose.ui.graphics.painter.Painter?;kotlin.String?;kotlin.Boolean;kotlin.Function0<kotlin.Unit>;kotlin.Function2<androidx.compose.runtime.Composer,kotlin.Int,kotlin.Unit>;androidx.compose.ui.Modifier;kotlin.Float){}[0]
 
@@ -1337,6 +1351,7 @@ final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$s
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DropOverlayModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DropOverlayModel$stableprop|#static{}com_seanproctor_docking_spi_DropOverlayModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_HandleModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_HandleModel$stableprop|#static{}com_seanproctor_docking_spi_HandleModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_HeaderModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_HeaderModel$stableprop|#static{}com_seanproctor_docking_spi_HeaderModel$stableprop[0]
+final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_PaneFrameModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_PaneFrameModel$stableprop|#static{}com_seanproctor_docking_spi_PaneFrameModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabItemModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabItemModel$stableprop|#static{}com_seanproctor_docking_spi_TabItemModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabStripModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabStripModel$stableprop|#static{}com_seanproctor_docking_spi_TabStripModel$stableprop[0]
 final val com.seanproctor.docking.state/com_seanproctor_docking_state_DockState$stableprop // com.seanproctor.docking.state/com_seanproctor_docking_state_DockState$stableprop|#static{}com_seanproctor_docking_state_DockState$stableprop[0]
@@ -1417,6 +1432,7 @@ final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$s
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DropOverlayModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DropOverlayModel$stableprop_getter|com_seanproctor_docking_spi_DropOverlayModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_HandleModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_HandleModel$stableprop_getter|com_seanproctor_docking_spi_HandleModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_HeaderModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_HeaderModel$stableprop_getter|com_seanproctor_docking_spi_HeaderModel$stableprop_getter(){}[0]
+final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_PaneFrameModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_PaneFrameModel$stableprop_getter|com_seanproctor_docking_spi_PaneFrameModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabItemModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabItemModel$stableprop_getter|com_seanproctor_docking_spi_TabItemModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabStripModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_TabStripModel$stableprop_getter|com_seanproctor_docking_spi_TabStripModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.state/DockState(com.seanproctor.docking.model/DockLayout = ..., com.seanproctor.docking.state/DockingSettings = ..., kotlin/Function1<com.seanproctor.docking.state/DockStateBuilder, kotlin/Unit>): com.seanproctor.docking.state/DockState // com.seanproctor.docking.state/DockState|DockState(com.seanproctor.docking.model.DockLayout;com.seanproctor.docking.state.DockingSettings;kotlin.Function1<com.seanproctor.docking.state.DockStateBuilder,kotlin.Unit>){}[0]

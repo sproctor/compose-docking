@@ -45,6 +45,7 @@ import com.seanproctor.docking.spi.DividerModel
 import com.seanproctor.docking.spi.HeaderModel
 import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.spi.LocalDockingTheme
+import com.seanproctor.docking.spi.PaneFrameModel
 import com.seanproctor.docking.spi.TabItemModel
 import com.seanproctor.docking.spi.TabPlacement
 import com.seanproctor.docking.spi.TabStripModel
@@ -181,7 +182,16 @@ internal fun DockAreaScope.RenderLeaf(
     DockableBoundsEffect(leaf.dockableId)
     Column(
         modifier
-            .onGloballyPositioned {
+            .then(
+                renderer.paneFrame(
+                    PaneFrameModel(
+                        dockableId = leaf.dockableId,
+                        isActive = state.activeDockable == leaf.dockableId,
+                        isTabGroup = false,
+                        tabPlacement = null,
+                    ),
+                ),
+            ).onGloballyPositioned {
                 val rect = it.boundsInRoot()
                 bounds.updateNode(leaf.id, rect)
                 bounds.updateDockable(leaf.dockableId, rect)
@@ -235,7 +245,19 @@ internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
     NodeBoundsEffect(node.id)
     val selected = node.selectedTab
     val placement = resolveTabPlacement(node)
-    Column(modifier.onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) }) {
+    Column(
+        modifier
+            .then(
+                renderer.paneFrame(
+                    PaneFrameModel(
+                        dockableId = selected.dockableId,
+                        isActive = state.activeDockable == selected.dockableId,
+                        isTabGroup = true,
+                        tabPlacement = placement,
+                    ),
+                ),
+            ).onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
+    ) {
         val strip: @Composable () -> Unit = {
             renderer.TabStrip(
                 buildTabStripModel(node, placement),
