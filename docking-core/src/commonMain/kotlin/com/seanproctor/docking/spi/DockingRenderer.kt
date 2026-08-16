@@ -31,9 +31,10 @@ public interface DockingRenderer {
      * the focused one.
      *
      * Returned as a [Modifier] rather than a wrapping composable so the pane keeps the layout
-     * core gave it: the frame decorates, it does not restructure. Applied outside core's own
-     * bounds reporting, so a frame that adds padding shifts the pane's drop targets with it,
-     * which is what makes drags line up with what the user sees.
+     * core gave it: the frame decorates, it does not restructure. Applied inside core's own
+     * bounds reporting, so the pane's drop target stays the whole slot the layout gave it
+     * however the frame decorates it - a frame that insets its content does not carve that
+     * inset out of the dock area, leaving a band between panes that drags fall through.
      *
      * Defaults to no frame.
      */

@@ -182,7 +182,11 @@ internal fun DockAreaScope.RenderLeaf(
     DockableBoundsEffect(leaf.dockableId)
     Column(
         modifier
-            .then(
+            .onGloballyPositioned {
+                val rect = it.boundsInRoot()
+                bounds.updateNode(leaf.id, rect)
+                bounds.updateDockable(leaf.dockableId, rect)
+            }.then(
                 renderer.paneFrame(
                     PaneFrameModel(
                         dockableId = leaf.dockableId,
@@ -191,11 +195,7 @@ internal fun DockAreaScope.RenderLeaf(
                         tabPlacement = null,
                     ),
                 ),
-            ).onGloballyPositioned {
-                val rect = it.boundsInRoot()
-                bounds.updateNode(leaf.id, rect)
-                bounds.updateDockable(leaf.dockableId, rect)
-            },
+            ),
     ) {
         if (spec == null) {
             renderer.MissingDockable(leaf.dockableId, Modifier.weight(1f).fillMaxWidth())
@@ -247,6 +247,7 @@ internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
     val placement = resolveTabPlacement(node)
     Column(
         modifier
+            .onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) }
             .then(
                 renderer.paneFrame(
                     PaneFrameModel(
@@ -256,7 +257,7 @@ internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
                         tabPlacement = placement,
                     ),
                 ),
-            ).onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
+            ),
     ) {
         val strip: @Composable () -> Unit = {
             renderer.TabStrip(
