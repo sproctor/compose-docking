@@ -792,6 +792,7 @@ public final class com/seanproctor/docking/spi/DebugDockingRenderer : com/seanpr
 	public fun MissingDockable-XtkTFH4 (Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun SplitDivider (Lcom/seanproctor/docking/spi/DividerModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun TabStrip (Lcom/seanproctor/docking/spi/TabStripModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun paneFrame (Lcom/seanproctor/docking/spi/PaneFrameModel;Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/Modifier;
 }
 
 public final class com/seanproctor/docking/spi/DividerModel {
@@ -812,10 +813,12 @@ public abstract interface class com/seanproctor/docking/spi/DockingRenderer {
 	public abstract fun MissingDockable-XtkTFH4 (Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun SplitDivider (Lcom/seanproctor/docking/spi/DividerModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun TabStrip (Lcom/seanproctor/docking/spi/TabStripModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun paneFrame (Lcom/seanproctor/docking/spi/PaneFrameModel;Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/Modifier;
 }
 
 public final class com/seanproctor/docking/spi/DockingRenderer$DefaultImpls {
 	public static fun CollapsedAnchor (Lcom/seanproctor/docking/spi/DockingRenderer;Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public static fun paneFrame (Lcom/seanproctor/docking/spi/DockingRenderer;Lcom/seanproctor/docking/spi/PaneFrameModel;Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/Modifier;
 }
 
 public final class com/seanproctor/docking/spi/DockingRendererKt {
@@ -896,6 +899,15 @@ public final class com/seanproctor/docking/spi/OverlayKind : java/lang/Enum {
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lcom/seanproctor/docking/spi/OverlayKind;
 	public static fun values ()[Lcom/seanproctor/docking/spi/OverlayKind;
+}
+
+public final class com/seanproctor/docking/spi/PaneFrameModel {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;ZZLcom/seanproctor/docking/spi/TabPlacement;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDockableId-iSrONGM ()Ljava/lang/String;
+	public final fun getTabPlacement ()Lcom/seanproctor/docking/spi/TabPlacement;
+	public final fun isActive ()Z
+	public final fun isTabGroup ()Z
 }
 
 public final class com/seanproctor/docking/spi/TabItemModel {

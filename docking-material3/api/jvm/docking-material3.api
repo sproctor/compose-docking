@@ -15,5 +15,6 @@ public final class com/seanproctor/docking/material3/Material3DockingRenderer : 
 	public fun MissingDockable-XtkTFH4 (Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun SplitDivider (Lcom/seanproctor/docking/spi/DividerModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public fun TabStrip (Lcom/seanproctor/docking/spi/TabStripModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
+	public fun paneFrame (Lcom/seanproctor/docking/spi/PaneFrameModel;Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/Modifier;
 }
 

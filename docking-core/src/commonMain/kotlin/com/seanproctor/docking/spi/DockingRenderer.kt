@@ -20,6 +20,27 @@ import com.seanproctor.docking.model.DockableId
 @Stable
 public interface DockingRenderer {
 
+    /**
+     * The frame around a whole pane - a dockable's header and body, or a tab group's strip
+     * and body - as a [Modifier] applied to the two together.
+     *
+     * Every other slot renders one part of a pane, so anything that has to enclose the parts
+     * has nowhere to go: a border drawn by [DockableHeader] stops at the bottom of the title
+     * bar, and one drawn by the body starts below it. This is the slot that wraps both, for
+     * a border around the pane, a shared background, a shadow, or an outline that picks out
+     * the focused one.
+     *
+     * Returned as a [Modifier] rather than a wrapping composable so the pane keeps the layout
+     * core gave it: the frame decorates, it does not restructure. Applied inside core's own
+     * bounds reporting, so the pane's drop target stays the whole slot the layout gave it
+     * however the frame decorates it - a frame that insets its content does not carve that
+     * inset out of the dock area, leaving a band between panes that drags fall through.
+     *
+     * Defaults to no frame.
+     */
+    @Composable
+    public fun paneFrame(model: PaneFrameModel): Modifier = Modifier
+
     /** The tab strip of a tab group. Apply each tab's `dragModifier` and `reorderOffsetX`. */
     @Composable
     public fun TabStrip(model: TabStripModel, modifier: Modifier)
