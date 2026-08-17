@@ -488,7 +488,11 @@ internal fun DockAreaScope.RenderSplit(
             val secondPlaceable = measurables[2].measure(Constraints.fixed(secondWidth, height))
             layout(width, height) {
                 firstPlaceable.place(0, 0)
-                dividerPlaceable.place(firstWidth, 0)
+                // Measuring a hidden divider to nothing is not enough to make it disappear:
+                // renderers draw into the space they are given without clipping to it, so a
+                // grip centred in a zero-width slot still paints, either side of a divider
+                // that is not there. Leaving it unplaced is what actually takes it off screen.
+                if (dividerVisible) dividerPlaceable.place(firstWidth, 0)
                 secondPlaceable.place(firstWidth + thickness, 0)
             }
         } else {
@@ -504,7 +508,7 @@ internal fun DockAreaScope.RenderSplit(
             val secondPlaceable = measurables[2].measure(Constraints.fixed(width, secondHeight))
             layout(width, height) {
                 firstPlaceable.place(0, 0)
-                dividerPlaceable.place(0, firstHeight)
+                if (dividerVisible) dividerPlaceable.place(0, firstHeight)
                 secondPlaceable.place(0, firstHeight + thickness)
             }
         }
