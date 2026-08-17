@@ -9,10 +9,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -39,6 +43,7 @@ import com.seanproctor.docking.model.NodeId
 import com.seanproctor.docking.model.SplitOrientation
 import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.model.WindowId
+import com.seanproctor.docking.model.WindowKind
 import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.spi.CollapsedAnchorModel
 import com.seanproctor.docking.spi.DividerModel
@@ -61,6 +66,46 @@ import kotlinx.coroutines.launch
 internal val DividerThickness = 8.dp
 
 /**
+ * Which window the content being composed is in.
+ *
+ * Read this to tell a torn-off panel from a docked one - it is what an application needs
+ * to put window buttons (minimize, maximize, close, dock back) in a dockable's
+ * [com.seanproctor.docking.state.DockableSpec.trailingActions], since a floating window
+ * is undecorated and the library draws no such buttons itself:
+ *
+ * ```
+ * dockable("output", title = { "Output" }, trailingActions = {
+ *     if (LocalDockWindow.current.isFloating) WindowButtons()
+ *     CloseButton()
+ * }) { OutputPane() }
+ * ```
+ *
+ * Available to renderers on the same terms; both compose inside a [DockArea].
+ */
+public val LocalDockWindow: ProvidableCompositionLocal<DockWindowInfo> =
+    staticCompositionLocalOf { DockWindowInfo(WindowId.MAIN, isFloating = false) }
+
+/** The window a [DockArea] is drawing, as [LocalDockWindow] reports it. */
+@Immutable
+public class DockWindowInfo(
+    public val windowId: WindowId,
+    /** True in one of [com.seanproctor.docking.desktop.FloatingDockWindows]' windows. */
+    public val isFloating: Boolean,
+)
+
+/**
+ * Wraps the header of a window's lone dockable so dragging it moves the window - and,
+ * released over another dock area, docks the panel there. Provided by the desktop
+ * floating-window code, which is where a window to move exists.
+ *
+ * Null everywhere else, which is how a header knows to keep its own drag gesture: a main
+ * window's header tears its panel out, a floating one's carries the whole window.
+ */
+internal val LocalWindowMoveHandle:
+    ProvidableCompositionLocal<(@Composable (@Composable () -> Unit) -> Unit)?> =
+    staticCompositionLocalOf { null }
+
+/**
  * Renders one window's docking layout: the tree of splits, tab groups and dockables,
  * plus (during drags) the docking overlay.
  *
@@ -81,20 +126,31 @@ public fun DockArea(
         state.dragController.registerWindow(windowId, scope)
         onDispose { state.dragController.unregisterWindow(windowId) }
     }
-    Box(
-        modifier
-            .onGloballyPositioned { scope.bounds.rootBounds = it.boundsInRoot() }
-            .dragSessionRootListener(scope),
-    ) {
-        val root = window.root
-        if (root == null) {
-            renderer.EmptyRootPlaceholder(Modifier.fillMaxSize())
-        } else {
-            key(root.id) {
-                scope.RenderNode(root, Modifier.fillMaxSize())
+    val windowInfo = remember(windowId, window.kind) {
+        DockWindowInfo(windowId, isFloating = window.kind == WindowKind.Floating)
+    }
+    CompositionLocalProvider(LocalDockWindow provides windowInfo) {
+        Box(
+            modifier
+                .onGloballyPositioned { scope.bounds.rootBounds = it.boundsInRoot() }
+                .dragSessionRootListener(scope),
+        ) {
+            val root = window.root
+            if (root == null) {
+                renderer.EmptyRootPlaceholder(Modifier.fillMaxSize())
+            } else {
+                key(root.id) {
+                    // The lone dockable of a window is the one whose header stands where a
+                    // title bar would, so it is the one that gets to drag the window.
+                    if (root is DockNode.Leaf) {
+                        scope.RenderLeaf(root, showHeader = true, Modifier.fillMaxSize(), headerMovesWindow = true)
+                    } else {
+                        scope.RenderNode(root, Modifier.fillMaxSize())
+                    }
+                }
             }
+            scope.DragOverlayLayer(Modifier.fillMaxSize())
         }
-        scope.DragOverlayLayer(Modifier.fillMaxSize())
     }
 }
 
@@ -175,6 +231,12 @@ internal fun DockAreaScope.RenderLeaf(
     leaf: DockNode.Leaf,
     showHeader: Boolean,
     modifier: Modifier,
+    /**
+     * Whether this leaf's header doubles as the window's title bar, dragging the window
+     * rather than the dockable. True only for the one dockable a window holds, and a no-op
+     * outside an undecorated floating window - see [LocalWindowMoveHandle].
+     */
+    headerMovesWindow: Boolean = false,
 ) {
     val renderer = LocalDockingRenderer.current
     val spec = state.registry[leaf.dockableId]
@@ -201,7 +263,14 @@ internal fun DockAreaScope.RenderLeaf(
             renderer.MissingDockable(leaf.dockableId, Modifier.weight(1f).fillMaxWidth())
         } else {
             if (showHeader) {
-                renderer.DockableHeader(buildHeaderModel(spec), Modifier.fillMaxWidth())
+                val moveHandle = if (headerMovesWindow) LocalWindowMoveHandle.current else null
+                val header = @Composable {
+                    renderer.DockableHeader(
+                        buildHeaderModel(spec, dragsWindow = moveHandle != null),
+                        Modifier.fillMaxWidth(),
+                    )
+                }
+                if (moveHandle != null) moveHandle(header) else header()
             }
             DockableContentBox(spec.id, Modifier.weight(1f).fillMaxWidth())
         }
@@ -340,12 +409,20 @@ private fun selectedDockableOf(node: DockNode.Tabs): DockableId = node.selectedT
 // ----- Header -----
 
 @Composable
-internal fun DockAreaScope.buildHeaderModel(spec: DockableSpec): HeaderModel = HeaderModel(
+internal fun DockAreaScope.buildHeaderModel(
+    spec: DockableSpec,
+    /**
+     * Whether the window-move handle around this header owns its drag. Two drag gestures
+     * on one header would race - the header's own starts a tear-out, the handle's moves
+     * the window - and the header's, being the inner one, would win every time.
+     */
+    dragsWindow: Boolean = false,
+): HeaderModel = HeaderModel(
     id = spec.id,
     title = spec.title(),
     icon = spec.icon?.invoke(),
     isActive = state.activeDockable == spec.id,
-    dragModifier = headerGestureModifier(spec.id),
+    dragModifier = if (dragsWindow) Modifier else headerGestureModifier(spec.id),
     trailingActions = spec.trailingActions,
     background = spec.headerBackground?.invoke(),
     foreground = spec.headerForeground?.invoke(),

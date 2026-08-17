@@ -26,17 +26,21 @@ internal class DesktopDockingIntegration(private val state: DockState) {
     val densities = HashMap<WindowId, Float>()
 
     init {
-        state.dragController.windowResolver = { screen -> resolveWindowAt(screen) }
+        state.dragController.windowResolver = { screen, exclude -> resolveWindowAt(screen, exclude) }
     }
 
     /**
      * The topmost docking window under a screen-px point: prefer the focused window,
      * then the most recently registered (floating windows register after main and
      * usually stack above it).
+     *
+     * [exclude] drops one from consideration - a window being dragged by its header is
+     * under the pointer and focused throughout, and would otherwise mask everything it is
+     * dragged over, including the window the user is aiming at.
      */
-    private fun resolveWindowAt(screen: Offset): WindowId? {
+    private fun resolveWindowAt(screen: Offset, exclude: WindowId? = null): WindowId? {
         val hits = awtWindows.entries.filter { (id, w) ->
-            w.isShowing && screenRectOf(id, w)?.contains(screen) == true
+            id != exclude && w.isShowing && screenRectOf(id, w)?.contains(screen) == true
         }
         return when {
             hits.isEmpty() -> null
@@ -58,6 +62,25 @@ internal class DesktopDockingIntegration(private val state: DockState) {
         }.getOrNull()
     }
 }
+
+/**
+ * The AWT window showing [windowId]'s dock area, or null when it is not on screen.
+ *
+ * A floating window is undecorated, so minimize, maximize and restore are the
+ * application's to provide - this is what it acts on. Pair it with
+ * [com.seanproctor.docking.ui.LocalDockWindow], which gives the [windowId] of whichever
+ * window the calling content is in:
+ *
+ * ```
+ * val windowId = LocalDockWindow.current.windowId
+ * IconButton(onClick = { (state.awtWindow(windowId) as? Frame)?.extendedState = Frame.ICONIFIED }) { ... }
+ * ```
+ *
+ * Read it when acting, not to drive composition: this tracks windows as they register,
+ * which is not snapshot state and will not recompose a reader when it changes.
+ */
+public fun DockState.awtWindow(windowId: WindowId = WindowId.MAIN): ComposeWindow? =
+    desktopIntegration(this).awtWindows[windowId]
 
 private val integrations = WeakHashMap<DockState, DesktopDockingIntegration>()
 

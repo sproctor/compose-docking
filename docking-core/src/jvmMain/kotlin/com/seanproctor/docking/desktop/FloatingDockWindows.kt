@@ -1,22 +1,30 @@
 package com.seanproctor.docking.desktop
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
-import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import com.seanproctor.docking.drag.DragListener
+import com.seanproctor.docking.drag.DragSource
+import com.seanproctor.docking.model.DockNode
+import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockWindow
 import com.seanproctor.docking.model.WindowBounds
 import com.seanproctor.docking.model.WindowId
@@ -24,15 +32,11 @@ import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.tree.dockableIds
 import com.seanproctor.docking.ui.DockArea
+import com.seanproctor.docking.ui.LocalWindowMoveHandle
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
-
-/** Receiver for custom floating-window chrome. */
-public interface FloatingWindowScope : FrameWindowScope {
-    public val windowId: WindowId
-    public val dockState: DockState
-}
 
 /**
  * Emits one OS window per floating entry in the layout, plus the drag preview window
@@ -52,19 +56,23 @@ public interface FloatingWindowScope : FrameWindowScope {
  * }
  * ```
  *
- * Windows are decorated by default (free OS move/resize/snap). Supplying [chrome] makes
- * them undecorated with your composable as the frame - e.g. Jewel's `DecoratedWindow`.
- * Empty floating windows are garbage-collected by the core; their `Window` simply leaves
+ * The windows themselves come from [host], which defaults to whatever
+ * [LocalFloatingWindowHost] carries - [DefaultFloatingWindowHost] unless an adapter
+ * provided one. That window is undecorated: the dockable's own header is its whole
+ * chrome, so a torn-off panel keeps the look it had docked instead of gaining an OS title
+ * bar above the one it already has. Supply [host] to build the windows differently.
+ *
+ * Empty floating windows are garbage-collected by the core; their window simply leaves
  * the composition.
  */
 @Composable
 public fun ApplicationScope.FloatingDockWindows(
     state: DockState,
-    chrome: (@Composable FloatingWindowScope.(content: @Composable () -> Unit) -> Unit)? = null,
+    host: FloatingWindowHost = LocalFloatingWindowHost.current,
 ) {
     for (floating in state.layout.floatingWindows) {
         key(floating.id) {
-            FloatingDockWindow(state, floating, chrome)
+            FloatingDockWindow(state, floating, host)
         }
     }
     DragPreviewWindow(state)
@@ -74,7 +82,7 @@ public fun ApplicationScope.FloatingDockWindows(
 private fun FloatingDockWindow(
     state: DockState,
     window: DockWindow,
-    chrome: (@Composable FloatingWindowScope.(content: @Composable () -> Unit) -> Unit)?,
+    host: FloatingWindowHost,
 ) {
     val bounds = window.bounds
     val windowState = rememberWindowState(
@@ -84,29 +92,130 @@ private fun FloatingDockWindow(
     )
     SyncWindowBounds(state, window.id, windowState)
 
-    val title = window.root?.dockableIds()?.firstOrNull()
-        ?.let { state.registry[it]?.title?.invoke() }
-        ?: "Floating"
+    val windowId = window.id
+    val spec = window.root?.dockableIds()?.firstOrNull()?.let { state.registry[it] }
+    val title = spec?.title?.invoke() ?: "Floating"
+    val icon = spec?.icon?.invoke()
+    // The one dockable a frame can be said to be titling, and the one whose header drags
+    // the window - the same condition DockArea applies the move handle under.
+    val loneDockable = (window.root as? DockNode.Leaf)?.dockableId
+    // Remembered so the host is not handed a new model - and a window composable a new set
+    // of arguments - on every recomposition the layout provokes. Only what the window
+    // actually shows is a key; `window` itself is a fresh DockWindow after any edit to it.
+    val model = remember(windowId, title, icon, windowState, state, loneDockable) {
+        FloatingWindowModel(
+            windowId = windowId,
+            title = title,
+            icon = icon,
+            state = windowState,
+            onCloseRequest = { state.closeWindow(windowId) },
+            dockState = state,
+            dockableId = loneDockable,
+        )
+    }
 
-    Window(
-        onCloseRequest = { state.closeWindow(window.id) },
-        state = windowState,
-        title = title,
-        undecorated = chrome != null,
-    ) {
-        registerDockingWindow(state, window.id)
-        if (chrome != null) {
-            val scope = remember(this, window.id) {
-                object : FloatingWindowScope, FrameWindowScope by this {
-                    override val windowId: WindowId = window.id
-                    override val dockState: DockState = state
+    host.FloatingWindow(model) {
+        registerDockingWindow(state, windowId)
+        val density = LocalDensity.current.density
+        val moveHandle: (@Composable (@Composable () -> Unit) -> Unit)? =
+            if (loneDockable == null) {
+                null
+            } else {
+                remember(state, windowId, loneDockable, density) {
+                    { header ->
+                        Box(Modifier.windowDragToDock(state, windowId, loneDockable, density)) {
+                            header()
+                        }
+                    }
                 }
             }
-            scope.chrome {
-                DockArea(state, window.id, Modifier.fillMaxSize())
+        CompositionLocalProvider(LocalWindowMoveHandle provides moveHandle) {
+            DockArea(state, windowId, Modifier.fillMaxSize())
+        }
+    }
+}
+
+/**
+ * The gesture on an undecorated floating window's header: it moves the window, and if it
+ * is let go over another dock area, docks the panel there.
+ *
+ * The move is driven from Compose rather than handed to the window manager, which is what
+ * makes the docking half possible at all: a compositor-driven move takes the pointer with
+ * it, so nothing here would see where the window went or when it was dropped. Every event
+ * of the gesture stays in this handler instead.
+ *
+ * The window follows the pointer by chasing it: each event moves the window by however far
+ * the pointer has drifted from where it went down, which the move then cancels out, so the
+ * next event starts from the same place. That the pointer's *local* position barely changes
+ * during the drag is the point - the screen position, which is what the drop cares about,
+ * comes from the window's own position on screen.
+ */
+internal fun Modifier.windowDragToDock(
+    state: DockState,
+    windowId: WindowId,
+    dockableId: DockableId,
+    density: Float,
+): Modifier = pointerInput(windowId, dockableId, density) {
+    val controller = state.dragController
+    awaitEachGesture {
+        // Unconsumed only: a press the header's own buttons took is theirs, not a drag.
+        val down = awaitFirstDown()
+        state.activeDockable = dockableId
+        val origin = down.position
+        var dragging = false
+        try {
+            while (true) {
+                val event = awaitPointerEvent()
+                // The tracked pointer is gone from the event: the gesture is over and
+                // never reached a release, so there is no drop to apply.
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) {
+                    if (dragging) {
+                        dragging = false
+                        controller.drop()
+                    }
+                    break
+                }
+                // Something ended the session from outside - Escape, which restores the
+                // bounds the drag began at. Moving the window again here would undo that
+                // restore a frame later.
+                if (dragging && controller.session == null) {
+                    dragging = false
+                    break
+                }
+                if (!dragging &&
+                    (change.position - origin).getDistance() > viewConfiguration.touchSlop
+                ) {
+                    // Only ever drive a session this gesture opened: startDrag declines
+                    // while another is running, and cancelling that one on the way out
+                    // would end a drag belonging to someone else.
+                    if (controller.session == null) {
+                        controller.startDrag(
+                            source = DragSource.Header(dockableId),
+                            positionInWindow = change.position,
+                            windowId = windowId,
+                            movesWindow = true,
+                        )
+                        dragging = controller.session != null
+                    }
+                }
+                if (dragging) {
+                    change.consume()
+                    val drift = change.position - origin
+                    state.awtWindow(windowId)?.let { window ->
+                        window.setLocation(
+                            window.x + (drift.x / density).roundToInt(),
+                            window.y + (drift.y / density).roundToInt(),
+                        )
+                    }
+                    controller.updateDrag(change.position, windowId)
+                }
             }
-        } else {
-            DockArea(state, window.id, Modifier.fillMaxSize())
+        } finally {
+            // Every other way out of the gesture - the pointer vanishing, this composable
+            // leaving, awaitEachGesture unwinding on a cancellation - would otherwise leave
+            // the session open, and an open session turns away every drag after it.
+            if (dragging) controller.cancel()
         }
     }
 }
@@ -178,6 +287,9 @@ private fun DragPreviewWindow(state: DockState) {
         }
     }
     val session = state.dragController.session ?: return
+    // A window drag carries the real window under the pointer; a ghost of the same panel
+    // trailing it would be a second copy of something already on screen.
+    if (session.movesWindow) return
     val integration = desktopIntegration(state)
     val density = integration.densities[session.originWindow] ?: 1f
     val position = session.screenPosition
