@@ -34,9 +34,9 @@ public class FloatingWindowModel(
     /**
      * The one dockable this window holds, or null when it holds a split or a tab group.
      *
-     * Non-null exactly when [FloatingWindowHost.framesPaneHeader] suppresses a header, so
-     * this is the dockable a frame is titling - and the one it can offer to dock back with
-     * [dockIntoMainWindow].
+     * Non-null exactly when the window's root is a single leaf, which is also the only
+     * shape whose header stands in for a title bar: it is the dockable this window is
+     * named after, and the one [dockIntoMainWindow] puts back.
      */
     public val dockableId: DockableId?,
 )
@@ -48,9 +48,8 @@ public class FloatingWindowModel(
  * Where it lands is what [com.seanproctor.docking.state.DockState.show] would pick for a
  * dockable that is not on screen: its declared anchor, or failing that the east quarter of
  * the main window - not necessarily the spot it was torn from, which the layout does not
- * record. A host whose frame stands in for the pane header should offer this, or the
- * dockable's only way back is the application's own commands: the header that would
- * otherwise carry the drag is the one the frame replaced.
+ * record. Dragging the header back onto a dock area is the other way home, and lands where
+ * it is dropped; this is the one to offer where a drag is awkward, or from a menu.
  */
 public fun FloatingWindowModel.dockIntoMainWindow() {
     val id = dockableId ?: return

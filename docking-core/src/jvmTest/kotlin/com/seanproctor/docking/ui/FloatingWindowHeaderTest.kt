@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.runComposeUiTest
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.WindowBounds
+import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.spi.DebugDockingRenderer
 import com.seanproctor.docking.spi.DockingRenderer
@@ -32,6 +33,15 @@ private val B = DockableId("b")
 private fun uiState(): DockState = DockState {
     dockable("a", title = { "Alpha" }) { BasicText("content-a") }
     dockable("b", title = { "Beta" }) { BasicText("content-b") }
+}
+
+/** A with B torn off into a floating window of its own - where move handles live. */
+private fun tornOff(): Pair<DockState, WindowId> {
+    val state = uiState()
+    state.dock(A)
+    state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
+    state.moveToNewWindow(B, WindowBounds(10f, 10f, 300f, 200f))
+    return state to state.layout.floatingWindows.single().id
 }
 
 /** Records which dockables were asked for a header. */
@@ -80,17 +90,16 @@ class FloatingWindowHeaderTest {
     // drags an undecorated window. Wrapping must not cost it its header.
     @Test
     fun theMoveHandleWrapsTheHeaderRatherThanReplacingIt() = runComposeUiTest {
-        val state = uiState()
-        state.dock(A)
+        val (state, floatingId) = tornOff()
         val renderer = HeaderRecordingRenderer()
         var wrapped = 0
         setContent {
             CompositionLocalProvider(
                 LocalDockingRenderer provides renderer,
                 LocalWindowMoveHandle provides { content -> wrapped++; Box { content() } },
-            ) { DockArea(state) }
+            ) { DockArea(state, floatingId) }
         }
-        assertEquals(listOf(A), renderer.headers.distinct(), "still drawn")
+        assertEquals(listOf(B), renderer.headers.distinct(), "still drawn")
         assertTrue(wrapped > 0, "and drawn inside the move handle")
     }
 
@@ -116,16 +125,15 @@ class FloatingWindowHeaderTest {
     // So where a move handle owns the drag, the header is built without one.
     @Test
     fun aFramedHeaderDoesNotAlsoStartATearOutDrag() = runComposeUiTest {
-        val state = uiState()
-        state.dock(A)
+        val (state, floatingId) = tornOff()
         setContent {
             CompositionLocalProvider(
                 LocalDockingRenderer provides HeaderRecordingRenderer(),
                 LocalWindowMoveHandle provides { content -> Box { content() } },
-            ) { DockArea(state, modifier = Modifier.fillMaxSize()) }
+            ) { DockArea(state, floatingId, Modifier.fillMaxSize()) }
         }
 
-        onNodeWithText("Alpha").performMouseInput {
+        onNodeWithText("Beta").performMouseInput {
             moveTo(center)
             press()
             repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
@@ -134,7 +142,7 @@ class FloatingWindowHeaderTest {
         waitForIdle()
 
         assertNull(state.dragController.session, "no drag session was started by the header")
-        assertTrue(state.isDocked(A), "and the panel was not torn out of its window")
+        assertTrue(state.isDocked(B), "and the panel was not torn out of its window")
     }
 
     // Without a handle - every docked pane - the header keeps its own drag, or nothing could

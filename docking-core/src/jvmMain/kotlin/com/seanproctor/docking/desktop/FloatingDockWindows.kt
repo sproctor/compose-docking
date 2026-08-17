@@ -150,7 +150,7 @@ private fun FloatingDockWindow(
  * during the drag is the point - the screen position, which is what the drop cares about,
  * comes from the window's own position on screen.
  */
-private fun Modifier.windowDragToDock(
+internal fun Modifier.windowDragToDock(
     state: DockState,
     windowId: WindowId,
     dockableId: DockableId,
@@ -163,35 +163,59 @@ private fun Modifier.windowDragToDock(
         state.activeDockable = dockableId
         val origin = down.position
         var dragging = false
-        while (true) {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-            if (!change.pressed) {
-                if (dragging) controller.drop()
-                break
-            }
-            if (!dragging &&
-                (change.position - origin).getDistance() > viewConfiguration.touchSlop
-            ) {
-                dragging = true
-                controller.startDrag(
-                    source = DragSource.Header(dockableId),
-                    positionInWindow = change.position,
-                    windowId = windowId,
-                    movesWindow = true,
-                )
-            }
-            if (dragging) {
-                change.consume()
-                val drift = change.position - origin
-                state.awtWindow(windowId)?.let { window ->
-                    window.setLocation(
-                        window.x + (drift.x / density).roundToInt(),
-                        window.y + (drift.y / density).roundToInt(),
-                    )
+        try {
+            while (true) {
+                val event = awaitPointerEvent()
+                // The tracked pointer is gone from the event: the gesture is over and
+                // never reached a release, so there is no drop to apply.
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) {
+                    if (dragging) {
+                        dragging = false
+                        controller.drop()
+                    }
+                    break
                 }
-                controller.updateDrag(change.position, windowId)
+                // Something ended the session from outside - Escape, which restores the
+                // bounds the drag began at. Moving the window again here would undo that
+                // restore a frame later.
+                if (dragging && controller.session == null) {
+                    dragging = false
+                    break
+                }
+                if (!dragging &&
+                    (change.position - origin).getDistance() > viewConfiguration.touchSlop
+                ) {
+                    // Only ever drive a session this gesture opened: startDrag declines
+                    // while another is running, and cancelling that one on the way out
+                    // would end a drag belonging to someone else.
+                    if (controller.session == null) {
+                        controller.startDrag(
+                            source = DragSource.Header(dockableId),
+                            positionInWindow = change.position,
+                            windowId = windowId,
+                            movesWindow = true,
+                        )
+                        dragging = controller.session != null
+                    }
+                }
+                if (dragging) {
+                    change.consume()
+                    val drift = change.position - origin
+                    state.awtWindow(windowId)?.let { window ->
+                        window.setLocation(
+                            window.x + (drift.x / density).roundToInt(),
+                            window.y + (drift.y / density).roundToInt(),
+                        )
+                    }
+                    controller.updateDrag(change.position, windowId)
+                }
             }
+        } finally {
+            // Every other way out of the gesture - the pointer vanishing, this composable
+            // leaving, awaitEachGesture unwinding on a cancellation - would otherwise leave
+            // the session open, and an open session turns away every drag after it.
+            if (dragging) controller.cancel()
         }
     }
 }

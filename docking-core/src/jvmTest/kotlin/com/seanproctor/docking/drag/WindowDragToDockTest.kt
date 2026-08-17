@@ -72,18 +72,23 @@ class WindowDragToDockTest {
     @Test
     fun droppingOverNothingLeavesTheWindowWhereItIs() {
         val (state, floatingId) = tornOff()
-        val before = state.layout.window(floatingId)?.bounds
+        val start = assertNotNull(state.layout.window(floatingId)?.bounds)
         state.dragController.startDrag(
             source = DragSource.Header(B),
             positionInWindow = Offset(20f, 8f),
             windowId = floatingId,
             movesWindow = true,
         )
+        // The drag has to actually carry the window somewhere, or a drop that restored the
+        // snapshot would land on the same bounds it started from and look like success.
+        val dropped = WindowBounds(50f, 400f, 400f, 300f)
+        state.setWindowBounds(floatingId, dropped)
         state.dragController.drop()
 
         assertNull(state.dragController.session)
         assertEquals(floatingId, assertNotNull(state.layout.windowContaining(B)).id, "still floating")
-        assertEquals(before, state.layout.window(floatingId)?.bounds, "bounds untouched by the drop")
+        assertEquals(dropped, state.layout.window(floatingId)?.bounds, "left where it was released")
+        assertTrue(dropped != start, "the window really did move")
     }
 
     // The whole point: let go over the main window's dock area and the panel goes back into
