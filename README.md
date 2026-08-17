@@ -36,9 +36,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.seanproctor:compose-docking-material3:0.2.2")
+    implementation("com.seanproctor:compose-docking-material3:0.3.0")
     // ...or, for the IntelliJ look on desktop:
-    // implementation("com.seanproctor:compose-docking-jewel:0.2.2")
+    // implementation("com.seanproctor:compose-docking-jewel:0.3.0")
 }
 ```
 
