@@ -1179,6 +1179,15 @@ final class com.seanproctor.docking.ui/DockCapabilities { // com.seanproctor.doc
     }
 }
 
+final class com.seanproctor.docking.ui/DockWindowInfo { // com.seanproctor.docking.ui/DockWindowInfo|null[0]
+    constructor <init>(com.seanproctor.docking.model/WindowId, kotlin/Boolean) // com.seanproctor.docking.ui/DockWindowInfo.<init>|<init>(com.seanproctor.docking.model.WindowId;kotlin.Boolean){}[0]
+
+    final val isFloating // com.seanproctor.docking.ui/DockWindowInfo.isFloating|{}isFloating[0]
+        final fun <get-isFloating>(): kotlin/Boolean // com.seanproctor.docking.ui/DockWindowInfo.isFloating.<get-isFloating>|<get-isFloating>(){}[0]
+    final val windowId // com.seanproctor.docking.ui/DockWindowInfo.windowId|{}windowId[0]
+        final fun <get-windowId>(): com.seanproctor.docking.model/WindowId // com.seanproctor.docking.ui/DockWindowInfo.windowId.<get-windowId>|<get-windowId>(){}[0]
+}
+
 final value class com.seanproctor.docking.model/AnchorId { // com.seanproctor.docking.model/AnchorId|null[0]
     constructor <init>(kotlin/String) // com.seanproctor.docking.model/AnchorId.<init>|<init>(kotlin.String){}[0]
 
@@ -1374,8 +1383,11 @@ final val com.seanproctor.docking.state/com_seanproctor_docking_state_DockingEve
 final val com.seanproctor.docking.state/com_seanproctor_docking_state_DockingSettings$stableprop // com.seanproctor.docking.state/com_seanproctor_docking_state_DockingSettings$stableprop|#static{}com_seanproctor_docking_state_DockingSettings$stableprop[0]
 final val com.seanproctor.docking.ui/LocalDockCapabilities // com.seanproctor.docking.ui/LocalDockCapabilities|{}LocalDockCapabilities[0]
     final fun <get-LocalDockCapabilities>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.ui/DockCapabilities> // com.seanproctor.docking.ui/LocalDockCapabilities.<get-LocalDockCapabilities>|<get-LocalDockCapabilities>(){}[0]
+final val com.seanproctor.docking.ui/LocalDockWindow // com.seanproctor.docking.ui/LocalDockWindow|{}LocalDockWindow[0]
+    final fun <get-LocalDockWindow>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.ui/DockWindowInfo> // com.seanproctor.docking.ui/LocalDockWindow.<get-LocalDockWindow>|<get-LocalDockWindow>(){}[0]
 final val com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockBoundsRegistry$stableprop // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockBoundsRegistry$stableprop|#static{}com_seanproctor_docking_ui_DockBoundsRegistry$stableprop[0]
 final val com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockCapabilities$stableprop // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockCapabilities$stableprop|#static{}com_seanproctor_docking_ui_DockCapabilities$stableprop[0]
+final val com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockWindowInfo$stableprop // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockWindowInfo$stableprop|#static{}com_seanproctor_docking_ui_DockWindowInfo$stableprop[0]
 final val com.seanproctor.docking.ui/platformDockCapabilities // com.seanproctor.docking.ui/platformDockCapabilities|{}platformDockCapabilities[0]
     final fun <get-platformDockCapabilities>(): com.seanproctor.docking.ui/DockCapabilities // com.seanproctor.docking.ui/platformDockCapabilities.<get-platformDockCapabilities>|<get-platformDockCapabilities>(){}[0]
 
@@ -1459,3 +1471,4 @@ final fun com.seanproctor.docking.ui/DockArea(com.seanproctor.docking.state/Dock
 final fun com.seanproctor.docking.ui/DockArea(com.seanproctor.docking.state/DockState, com.seanproctor.docking.model/WindowId?, androidx.compose.ui/Modifier?, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // com.seanproctor.docking.ui/DockArea|DockArea(com.seanproctor.docking.state.DockState;com.seanproctor.docking.model.WindowId?;androidx.compose.ui.Modifier?;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]
 final fun com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockBoundsRegistry$stableprop_getter(): kotlin/Int // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockBoundsRegistry$stableprop_getter|com_seanproctor_docking_ui_DockBoundsRegistry$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockCapabilities$stableprop_getter(): kotlin/Int // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockCapabilities$stableprop_getter|com_seanproctor_docking_ui_DockCapabilities$stableprop_getter(){}[0]
+final fun com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockWindowInfo$stableprop_getter(): kotlin/Int // com.seanproctor.docking.ui/com_seanproctor_docking_ui_DockWindowInfo$stableprop_getter|com_seanproctor_docking_ui_DockWindowInfo$stableprop_getter(){}[0]

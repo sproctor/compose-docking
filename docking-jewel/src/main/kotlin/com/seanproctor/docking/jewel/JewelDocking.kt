@@ -21,7 +21,9 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
  * }
  * ```
  *
- * Note: Jewel requires the JetBrains Runtime at runtime.
+ * Floating windows need nothing extra: they are undecorated, and this renderer's own
+ * header is what titles and drags them, so a torn-off panel is drawn by exactly the code
+ * that drew it docked.
  */
 @Composable
 public fun JewelDocking(

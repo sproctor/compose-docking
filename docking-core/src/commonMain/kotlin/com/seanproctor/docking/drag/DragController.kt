@@ -56,6 +56,16 @@ internal class DragSession(
     val payload: DragPayload,
     val originWindow: WindowId,
     internal val snapshot: DockLayout,
+    /**
+     * True when the drag is carrying [originWindow] itself - an undecorated floating
+     * window dragged by the header that stands in for its title bar.
+     *
+     * The window is the preview, so the payload stays docked in it and follows the
+     * pointer bodily rather than being undocked into a ghost. Released over a dock area
+     * it docks there and the window goes; released anywhere else it simply stays where it
+     * was dropped, which is what dragging a window is normally for.
+     */
+    val movesWindow: Boolean = false,
 ) {
     var screenPosition: Offset by mutableStateOf(Offset.Zero)
     var hoveredWindow: WindowId? by mutableStateOf(null)
@@ -123,8 +133,11 @@ internal class DragController(private val state: DockState) {
 
     internal fun registeredWindows(): List<RegisteredWindow> = windows.values.toList()
 
-    /** Desktop layer override: resolve the topmost registered window at a screen point. */
-    var windowResolver: ((Offset) -> WindowId?)? = null
+    /**
+     * Desktop layer override: the topmost registered window at a screen point, ignoring
+     * the excluded one - which is the window being dragged, and so always in the way.
+     */
+    var windowResolver: ((screen: Offset, exclude: WindowId?) -> WindowId?)? = null
 
     var dragListener: DragListener? = null
 
@@ -147,12 +160,16 @@ internal class DragController(private val state: DockState) {
         positionInWindow: Offset,
         windowId: WindowId,
         sourceSize: Size? = null,
+        movesWindow: Boolean = false,
     ) {
         if (session != null) return
         val payload = buildPayload(source, windowId, sourceSize) ?: return
         val snapshot = state.layout
-        payload.all.forEach { state.undockTemporarily(it) }
-        val newSession = DragSession(source, payload, windowId, snapshot)
+        // Undocking is what turns a panel into a ghost following the pointer. A window
+        // drag has the real window to follow it, and undocking would delete that window
+        // out from under the gesture, so the payload stays where it is until the drop.
+        if (!movesWindow) payload.all.forEach { state.undockTemporarily(it) }
+        val newSession = DragSession(source, payload, windowId, snapshot, movesWindow)
         session = newSession
         dragListener?.onDragStarted(newSession)
         updateDrag(positionInWindow, windowId)
@@ -165,11 +182,20 @@ internal class DragController(private val state: DockState) {
         s.screenPosition = screen
         dragListener?.onDragMoved(screen)
 
-        val hoveredId = resolveWindowAt(screen)
+        // The dragged window sits under the pointer for the whole gesture - it is following
+        // it - so it has to be looked past to find what is underneath, and it is never a
+        // target for itself.
+        val hoveredId = resolveWindowAt(screen, exclude = s.originWindow.takeIf { s.movesWindow })
         if (hoveredId == null) {
             s.hoveredWindow = null
             s.handles = emptyList()
-            s.target = if (payloadMayFloat(s.payload)) DropTarget.NewWindow(screen) else DropTarget.None
+            // A window dropped over nothing is already floating, exactly where the drop
+            // left it; there is no new window to spawn and nothing to move.
+            s.target = when {
+                s.movesWindow -> DropTarget.None
+                payloadMayFloat(s.payload) -> DropTarget.NewWindow(screen)
+                else -> DropTarget.None
+            }
             return
         }
         if (s.payload.options.limitedToWindow && hoveredId != s.originWindow) {
@@ -188,6 +214,14 @@ internal class DragController(private val state: DockState) {
     fun drop() {
         val s = session ?: return
         session = null
+        if (s.movesWindow) {
+            // Nothing was undocked, so there is nothing to put back: a drop that finds no
+            // target leaves the window where the user let go of it. Restoring the snapshot
+            // here would undo the move itself and snap the window back.
+            applyTarget(s)
+            dragListener?.onDragEnded()
+            return
+        }
         val applied = applyTarget(s)
         if (!applied || !state.isOpen(s.payload.primary)) {
             state.restoreSnapshot(s.snapshot)
@@ -250,10 +284,11 @@ internal class DragController(private val state: DockState) {
 
     // ----- Window resolution -----
 
-    private fun resolveWindowAt(screen: Offset): WindowId? {
-        windowResolver?.let { return it(screen) }
+    private fun resolveWindowAt(screen: Offset, exclude: WindowId? = null): WindowId? {
+        windowResolver?.let { return it(screen, exclude) }
         return windows.values.firstOrNull { reg ->
-            reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen))
+            reg.windowId != exclude &&
+                reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen))
         }?.windowId
     }
 

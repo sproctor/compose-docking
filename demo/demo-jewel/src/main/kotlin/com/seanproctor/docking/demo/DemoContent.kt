@@ -29,7 +29,10 @@ import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.DockingStyle
 import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.model.DockableId
+import com.seanproctor.docking.desktop.awtWindow
 import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.ui.LocalDockWindow
+import java.awt.Frame
 import com.seanproctor.docking.state.DockableSpec
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ColumnScope
@@ -304,10 +307,30 @@ private fun DockState.DemoHeaderActions(id: DockableId, tint: Color?) {
                 tint = tint ?: JewelTheme.globalColors.text.normal,
             )
         }
+        // A floating window is undecorated, so its buttons are the application's to draw -
+        // the library ships none. LocalDockWindow is how a header knows to.
+        if (LocalDockWindow.current.isFloating) DemoWindowButtons(id, tint)
         DemoOverflowMenu(id, tint)
         if (options.closable) {
             DemoIconButton(AllIconsKeys.General.Close, "Close", tint) { scope.launch { close(id) } }
         }
+    }
+}
+
+/**
+ * Dock-back and minimize for a torn-off panel, standing in for the title bar it does not
+ * have. Minimize goes through the AWT window; docking back is a layout operation, and
+ * takes the panel to wherever [DockState.show] would put it.
+ */
+@Composable
+private fun DockState.DemoWindowButtons(id: DockableId, tint: Color?) {
+    val windowId = LocalDockWindow.current.windowId
+    DemoIconButton(AllIconsKeys.General.OpenInToolWindow, "Dock back into the main window", tint) {
+        undock(id)
+        show(id)
+    }
+    DemoIconButton(AllIconsKeys.General.HideToolWindow, "Minimize", tint) {
+        awtWindow(windowId)?.extendedState = Frame.ICONIFIED
     }
 }
 

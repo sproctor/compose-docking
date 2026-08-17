@@ -106,6 +106,37 @@ The Jewel adapter only *reads* from `JewelTheme`, so it works under both the sta
 `IntUiTheme` and the IDE `SwingBridgeTheme`. Jewel 0.39+ ships Java 25 bytecode — run on
 a JDK 25+ (JetBrains Runtime recommended).
 
+### Floating windows draw their own chrome
+
+A floating window is **undecorated**: the dockable's own header is the whole of it, so a
+torn-off panel looks exactly as it did docked — same renderer, same colors — with no OS
+title bar above repeating its name. Compose Desktop's resizer handles the edges.
+
+Dragging that header moves the window, and **dropping it over another dock area docks it
+there** — the window is its own drag preview, so the panel rides along inside it instead
+of becoming a ghost, and the emptied window closes behind it. Released anywhere else the
+window simply stays where you dropped it; Esc puts it back where the drag began.
+
+Nobody draws minimize/maximize/close for you: the library contributes no header buttons
+at all (a dockable's are its `trailingActions`). Read `LocalDockWindow` to tell a
+torn-off panel from a docked one, and `DockState.awtWindow(windowId)` to act on the
+window:
+
+```kotlin
+dockable("output", title = { "Output" }, trailingActions = {
+    val window = LocalDockWindow.current
+    if (window.isFloating) {
+        IconButton(onClick = { state.awtWindow(window.windowId)?.extendedState = Frame.ICONIFIED }) {
+            Icon(Icons.Default.Minimize, "Minimize")
+        }
+    }
+    CloseButton()
+}) { OutputPane() }
+```
+
+Supply a `FloatingWindowHost` to `FloatingDockWindows` to build the windows differently —
+OS-decorated, or with a frame of your own.
+
 ## Concepts
 
 - **`DockState`** — the single source of truth. Holds an immutable layout value

@@ -1,15 +1,39 @@
+public final class com/seanproctor/docking/desktop/DefaultFloatingWindowHost : com/seanproctor/docking/desktop/FloatingWindowHost {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/desktop/DefaultFloatingWindowHost;
+	public fun FloatingWindow (Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
+}
+
 public final class com/seanproctor/docking/desktop/DesktopDockingIntegrationKt {
+	public static final fun awtWindow-0Cp-TJE (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;)Landroidx/compose/ui/awt/ComposeWindow;
+	public static synthetic fun awtWindow-0Cp-TJE$default (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;ILjava/lang/Object;)Landroidx/compose/ui/awt/ComposeWindow;
 	public static final synthetic fun registerDockingWindow-LiaOB80 (Landroidx/compose/ui/window/FrameWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/runtime/Composer;II)V
 	public static final fun registerDockingWindow-eqlt_aE (Landroidx/compose/ui/window/FrameWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class com/seanproctor/docking/desktop/FloatingDockWindowsKt {
-	public static final fun FloatingDockWindows (Landroidx/compose/ui/window/ApplicationScope;Lcom/seanproctor/docking/state/DockState;Lkotlin/jvm/functions/Function4;Landroidx/compose/runtime/Composer;II)V
+	public static final fun FloatingDockWindows (Landroidx/compose/ui/window/ApplicationScope;Lcom/seanproctor/docking/state/DockState;Lcom/seanproctor/docking/desktop/FloatingWindowHost;Landroidx/compose/runtime/Composer;II)V
 }
 
-public abstract interface class com/seanproctor/docking/desktop/FloatingWindowScope : androidx/compose/ui/window/FrameWindowScope {
-	public abstract fun getDockState ()Lcom/seanproctor/docking/state/DockState;
-	public abstract fun getWindowId-umyQrq8 ()Ljava/lang/String;
+public abstract interface class com/seanproctor/docking/desktop/FloatingWindowHost {
+	public abstract fun FloatingWindow (Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
+}
+
+public final class com/seanproctor/docking/desktop/FloatingWindowHostKt {
+	public static final fun dockIntoMainWindow (Lcom/seanproctor/docking/desktop/FloatingWindowModel;)V
+	public static final fun getLocalFloatingWindowHost ()Landroidx/compose/runtime/ProvidableCompositionLocal;
+}
+
+public final class com/seanproctor/docking/desktop/FloatingWindowModel {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Landroidx/compose/ui/graphics/painter/Painter;Landroidx/compose/ui/window/WindowState;Lkotlin/jvm/functions/Function0;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDockState ()Lcom/seanproctor/docking/state/DockState;
+	public final fun getDockableId-NZiJRpQ ()Ljava/lang/String;
+	public final fun getIcon ()Landroidx/compose/ui/graphics/painter/Painter;
+	public final fun getOnCloseRequest ()Lkotlin/jvm/functions/Function0;
+	public final fun getState ()Landroidx/compose/ui/window/WindowState;
+	public final fun getTitle ()Ljava/lang/String;
+	public final fun getWindowId-umyQrq8 ()Ljava/lang/String;
 }
 
 public abstract interface class com/seanproctor/docking/drag/DropTarget {
@@ -1231,6 +1255,7 @@ public final class com/seanproctor/docking/state/RememberDockStateKt {
 public final class com/seanproctor/docking/ui/DockAreaKt {
 	public static final fun DockArea-9q_Ko14 (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
 	public static final synthetic fun DockArea-GZXF2_U (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+	public static final fun getLocalDockWindow ()Landroidx/compose/runtime/ProvidableCompositionLocal;
 }
 
 public final class com/seanproctor/docking/ui/DockBoundsRegistry {
@@ -1255,5 +1280,12 @@ public final class com/seanproctor/docking/ui/DockCapabilitiesKt {
 
 public final class com/seanproctor/docking/ui/DockCapabilities_jvmKt {
 	public static final fun getPlatformDockCapabilities ()Lcom/seanproctor/docking/ui/DockCapabilities;
+}
+
+public final class com/seanproctor/docking/ui/DockWindowInfo {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getWindowId-umyQrq8 ()Ljava/lang/String;
+	public final fun isFloating ()Z
 }
 
