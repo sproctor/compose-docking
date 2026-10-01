@@ -44,17 +44,20 @@ internal class DockAreaScope(
 
     @Composable
     fun DockableContent(id: DockableId) {
-        val content = movables.getOrPut(id) {
-            movableContentOf {
-                val spec = state.registry[id]
-                if (spec != null) {
-                    state.contentStateHolder.SaveableStateProvider(id) {
-                        spec.content()
-                    }
+        movableFor(id)()
+    }
+
+    // Must not be @Composable: there the compiler memoizes the lambda by call site, so
+    // every dockable shown at the same site would share one instance (issue #5).
+    private fun movableFor(id: DockableId): @Composable () -> Unit = movables.getOrPut(id) {
+        movableContentOf {
+            val spec = state.registry[id]
+            if (spec != null) {
+                state.contentStateHolder.SaveableStateProvider(id) {
+                    spec.content()
                 }
             }
         }
-        content()
     }
 }
 
