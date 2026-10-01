@@ -44,17 +44,24 @@ internal class DockAreaScope(
 
     @Composable
     fun DockableContent(id: DockableId) {
-        val content = movables.getOrPut(id) {
-            movableContentOf {
-                val spec = state.registry[id]
-                if (spec != null) {
-                    state.contentStateHolder.SaveableStateProvider(id) {
-                        spec.content()
-                    }
-                }
+        movables.getOrPut(id) { createMovable(id) }()
+    }
+
+    /**
+     * Deliberately not `@Composable`. The compose compiler memoizes a composable lambda
+     * written inside a composable function by its slot-table position, which is shared by
+     * every dockable shown at the same call site (e.g. a tab group's content area). Each
+     * cached movable would then wrap the same lambda instance, whose captured [id] is
+     * overwritten by the last dockable created there - so revisiting a tab showed another
+     * tab's content (issue #5).
+     */
+    private fun createMovable(id: DockableId): @Composable () -> Unit = movableContentOf {
+        val spec = state.registry[id]
+        if (spec != null) {
+            state.contentStateHolder.SaveableStateProvider(id) {
+                spec.content()
             }
         }
-        content()
     }
 }
 
