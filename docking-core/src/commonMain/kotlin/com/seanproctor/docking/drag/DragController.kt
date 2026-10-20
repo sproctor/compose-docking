@@ -68,6 +68,13 @@ internal class DragSession(
     val movesWindow: Boolean = false,
 ) {
     var screenPosition: Offset by mutableStateOf(Offset.Zero)
+
+    /**
+     * Carried by the platform's drag-and-drop session (native Wayland) rather than by the
+     * origin window's pointer stream: the windows' drop targets report the pointer and
+     * the drop, so the root listeners leave the session alone.
+     */
+    var carriedByPlatform: Boolean = false
     var hoveredWindow: WindowId? by mutableStateOf(null)
     var target: DropTarget by mutableStateOf(DropTarget.None)
     var handles: List<PositionedHandle> by mutableStateOf(emptyList())
@@ -209,6 +216,41 @@ internal class DragController(private val state: DockState) {
         s.hoveredWindow = hoveredId
         s.handles = computeHandles(hovered, local, s.payload)
         s.target = resolveTarget(hovered, local, s)
+    }
+
+    /**
+     * The pointer is at [positionInWindow] in [windowId]'s root, as that window's drop
+     * target reports it: no shared screen space, the window is simply the hovered one.
+     */
+    fun updateDragInWindow(positionInWindow: Offset, windowId: WindowId) {
+        val s = session ?: return
+        val hovered = windows[windowId] ?: return
+        s.screenPosition = positionInWindow
+        dragListener?.onDragMoved(positionInWindow)
+        if (s.payload.options.limitedToWindow && windowId != s.originWindow) {
+            s.hoveredWindow = windowId
+            s.handles = emptyList()
+            s.target = DropTarget.None
+            return
+        }
+        s.hoveredWindow = windowId
+        s.handles = computeHandles(hovered, positionInWindow, s.payload)
+        s.target = resolveTarget(hovered, positionInWindow, s)
+    }
+
+    /** The pointer left every window: a release now tears the payload off, if it may float. */
+    fun leaveWindows() {
+        val s = session ?: return
+        s.hoveredWindow = null
+        s.handles = emptyList()
+        s.target = if (!s.movesWindow && payloadMayFloat(s.payload)) DropTarget.NewWindow(s.screenPosition) else DropTarget.None
+    }
+
+    /** Released over no window: tear the payload off into a new window, or put it back. */
+    fun dropOutside() {
+        if (session == null) return
+        leaveWindows()
+        drop()
     }
 
     fun drop() {

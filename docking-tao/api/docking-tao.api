@@ -1,0 +1,25 @@
+public final class com/seanproctor/docking/tao/DefaultTaoFloatingWindowHost : com/seanproctor/docking/tao/TaoFloatingWindowHost {
+	public static final field $stable I
+	public static final field INSTANCE Lcom/seanproctor/docking/tao/DefaultTaoFloatingWindowHost;
+	public fun FloatingWindow (Ldev/nucleusframework/application/NucleusApplicationScope;Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
+}
+
+public final class com/seanproctor/docking/tao/TaoDockingIntegrationKt {
+	public static final fun nucleusWindow-0Cp-TJE (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;)Ldev/nucleusframework/application/NucleusWindow;
+	public static synthetic fun nucleusWindow-0Cp-TJE$default (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;ILjava/lang/Object;)Ldev/nucleusframework/application/NucleusWindow;
+}
+
+public final class com/seanproctor/docking/tao/TaoFloatingDockWindowsKt {
+	public static final fun TaoFloatingDockWindows (Ldev/nucleusframework/application/NucleusApplicationScope;Lcom/seanproctor/docking/state/DockState;Lcom/seanproctor/docking/tao/TaoFloatingWindowHost;Landroidx/compose/runtime/Composer;II)V
+	public static final fun getLocalTaoFloatingWindowHost ()Landroidx/compose/runtime/ProvidableCompositionLocal;
+}
+
+public abstract interface class com/seanproctor/docking/tao/TaoFloatingWindowHost {
+	public abstract fun FloatingWindow (Ldev/nucleusframework/application/NucleusApplicationScope;Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
+}
+
+public final class com/seanproctor/docking/tao/TaoTransferDragKt {
+	public static final fun TaoDockArea-4gOWUWA (Ldev/nucleusframework/application/NucleusDecoratedWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+	public static final synthetic fun TaoDockArea-iiVpG6A (Ldev/nucleusframework/application/NucleusDecoratedWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+}
+

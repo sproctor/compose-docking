@@ -1,3 +1,5 @@
+@file:OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
+
 package com.seanproctor.docking.desktop
 
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -19,24 +21,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import com.seanproctor.docking.drag.DragListener
 import com.seanproctor.docking.drag.DragSource
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockWindow
-import com.seanproctor.docking.model.WindowBounds
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.spi.LocalDockingRenderer
+import com.seanproctor.docking.spi.SyncDockWindowBounds
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.tree.dockableIds
 import com.seanproctor.docking.ui.DockArea
 import com.seanproctor.docking.ui.LocalWindowMoveHandle
-import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
 
 /**
  * Emits one OS window per floating entry in the layout, plus the drag preview window
@@ -90,7 +88,7 @@ private fun FloatingDockWindow(
             ?: WindowPosition.PlatformDefault,
         size = bounds?.let { DpSize(it.width.dp, it.height.dp) } ?: DpSize(400.dp, 300.dp),
     )
-    SyncWindowBounds(state, window.id, windowState)
+    SyncDockWindowBounds(state, window.id, windowState)
 
     val windowId = window.id
     val spec = window.root?.dockableIds()?.firstOrNull()?.let { state.registry[it] }
@@ -219,55 +217,6 @@ internal fun Modifier.windowDragToDock(
         }
     }
 }
-
-/**
- * Two-way bounds sync: OS moves/resizes flow into the model (debounced, for
- * persistence); model changes from a layout restore flow back to the OS window. A
- * value-compare echo guard breaks feedback loops.
- */
-@OptIn(FlowPreview::class)
-@Composable
-private fun SyncWindowBounds(state: DockState, windowId: WindowId, windowState: WindowState) {
-    LaunchedEffect(state, windowId, windowState) {
-        snapshotFlow { windowState.position to windowState.size }
-            .debounce(100)
-            .collect { (position, size) ->
-                if (position is WindowPosition.Absolute) {
-                    val next = WindowBounds(
-                        position.x.value,
-                        position.y.value,
-                        size.width.value,
-                        size.height.value,
-                    )
-                    if (!next.approximately(state.layout.window(windowId)?.bounds)) {
-                        state.setWindowBounds(windowId, next)
-                    }
-                }
-            }
-    }
-    LaunchedEffect(state, windowId, windowState) {
-        snapshotFlow { state.layout.window(windowId)?.bounds }
-            .collect { bounds ->
-                if (bounds != null) {
-                    val current = windowState.position
-                    val matches = current is WindowPosition.Absolute &&
-                        WindowBounds(
-                            current.x.value, current.y.value,
-                            windowState.size.width.value, windowState.size.height.value,
-                        ).approximately(bounds)
-                    if (!matches) {
-                        windowState.position = WindowPosition.Absolute(bounds.x.dp, bounds.y.dp)
-                        windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
-                    }
-                }
-            }
-    }
-}
-
-private fun WindowBounds.approximately(other: WindowBounds?): Boolean =
-    other != null &&
-        abs(x - other.x) < 1f && abs(y - other.y) < 1f &&
-        abs(width - other.width) < 1f && abs(height - other.height) < 1f
 
 /**
  * The undecorated always-on-top window following the pointer during a drag -

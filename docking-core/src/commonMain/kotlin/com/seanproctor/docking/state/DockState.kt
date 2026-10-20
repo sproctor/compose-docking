@@ -85,6 +85,12 @@ public class DockState(
         com.seanproctor.docking.drag.DragController(this)
     }
 
+    /** The window-system adapters' view of [dragController]. */
+    @OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
+    internal val windowHostBridge: com.seanproctor.docking.spi.DockingWindowHost by lazy {
+        com.seanproctor.docking.spi.DockingWindowHost(this)
+    }
+
     // ----- Transient UI state (never persisted) -----
 
     /** The dockable with input focus, for the active highlighter. Set by focus/press listeners. */
