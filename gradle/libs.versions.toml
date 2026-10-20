@@ -18,6 +18,7 @@ agp = "9.1.1"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 jewel = "0.41.0-262.10968.63"
+nucleus = "3.0.0-dev-202610200221"
 # The IntelliJ platform build Jewel targets; supplies the actual icon SVGs.
 intellij-platform = "262.10968.63"
 vanniktech-publish = "0.37.0"
@@ -29,6 +30,8 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+nucleus-application = { module = "dev.nucleusframework:nucleus.nucleus-application", version.ref = "nucleus" }
+nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorated-window-tao", version.ref = "nucleus" }
 # Jewel declares icons-api/-impl but not the SVG bundle AllIconsKeys resolves against.
 intellij-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij-platform" }
 
