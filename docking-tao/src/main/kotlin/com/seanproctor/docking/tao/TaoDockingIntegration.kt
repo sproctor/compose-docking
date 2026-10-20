@@ -113,13 +113,12 @@ public fun DockState.nucleusWindow(windowId: WindowId = WindowId.MAIN): NucleusW
 
 /**
  * Connects the surrounding Nucleus window to the docking system: screen-coordinate
- * conversion for cross-window drags, and finding the window a drop lands in. Call once
- * inside every window that hosts a [com.seanproctor.docking.ui.DockArea]: the main window
- * in your own `DecoratedWindow` block; floating windows get it from [TaoFloatingDockWindows].
+ * conversion for cross-window drags, and finding the window a drop lands in. [TaoDockArea]
+ * calls it; call it yourself only around a plain [com.seanproctor.docking.ui.DockArea].
  *
- * On native Wayland windows cannot be placed, so there is no shared screen space: drags
- * work within a window, and a panel dragged out of one tears off into a new floating
- * window (placed by the compositor), but cannot be dropped into another window.
+ * On native Wayland windows cannot be placed, so there is no shared screen space, and a
+ * plain dock area only drags within its window. [TaoDockArea] adds the platform
+ * drag-and-drop path that carries drags between windows there.
  */
 @Composable
 public fun NucleusDecoratedWindowScope.registerTaoDockingWindow(

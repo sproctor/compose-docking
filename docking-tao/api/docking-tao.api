@@ -20,3 +20,8 @@ public abstract interface class com/seanproctor/docking/tao/TaoFloatingWindowHos
 	public abstract fun FloatingWindow (Ldev/nucleusframework/application/NucleusApplicationScope;Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
 }
 
+public final class com/seanproctor/docking/tao/TaoTransferDragKt {
+	public static final fun TaoDockArea-4gOWUWA (Ldev/nucleusframework/application/NucleusDecoratedWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+	public static final synthetic fun TaoDockArea-iiVpG6A (Ldev/nucleusframework/application/NucleusDecoratedWindowScope;Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+}
+

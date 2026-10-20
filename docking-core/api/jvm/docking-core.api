@@ -828,6 +828,22 @@ public final class com/seanproctor/docking/spi/DividerModel {
 	public final fun isDragging ()Z
 }
 
+public final class com/seanproctor/docking/spi/DockDragGrip {
+	public static final field $stable I
+	public final fun begin-k-4lQ0M (J)Z
+	public final fun endLocal-MZcJ67o (ZLandroidx/compose/ui/geometry/Offset;)V
+	public final fun getKey ()Ljava/lang/Object;
+	public final fun getSourceBoundsInWindow ()Landroidx/compose/ui/geometry/Rect;
+	public final fun getTitle ()Ljava/lang/String;
+	public final fun getWindowId-umyQrq8 ()Ljava/lang/String;
+	public final fun stayLocal-k-4lQ0M (J)Z
+	public final fun toWindow-MK-Hz9U (J)J
+}
+
+public abstract interface class com/seanproctor/docking/spi/DockingDragHandover {
+	public abstract fun gripModifier (Lcom/seanproctor/docking/spi/DockDragGrip;Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/Modifier;
+}
+
 public abstract interface class com/seanproctor/docking/spi/DockingRenderer {
 	public fun CollapsedAnchor (Lcom/seanproctor/docking/spi/CollapsedAnchorModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 	public abstract fun DockableHeader (Lcom/seanproctor/docking/spi/HeaderModel;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
@@ -880,21 +896,25 @@ public final class com/seanproctor/docking/spi/DockingWindowHost {
 	public final fun cancel ()V
 	public final fun clearScreenConverter-CsocBQc (Ljava/lang/String;)V
 	public final fun drop ()V
+	public final fun dropOutside ()V
 	public final fun getDragPreview ()Lcom/seanproctor/docking/spi/DragPreviewInfo;
 	public final fun getDrawsDragPreview ()Z
 	public final fun getWindowResolver ()Lkotlin/jvm/functions/Function2;
 	public final fun isDragging ()Z
+	public final fun leaveWindows ()V
 	public final fun setDrawsDragPreview (Z)V
 	public final fun setScreenConverter-1v_huBY (Ljava/lang/String;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
 	public final fun setWindowResolver (Lkotlin/jvm/functions/Function2;)V
 	public final fun startWindowDrag-0T3TrDY (Ljava/lang/String;Ljava/lang/String;J)Z
 	public final fun updateDrag-HZcugG8 (JLjava/lang/String;)V
+	public final fun updateDragInWindow-HZcugG8 (JLjava/lang/String;)V
 }
 
 public abstract interface annotation class com/seanproctor/docking/spi/DockingWindowHostApi : java/lang/annotation/Annotation {
 }
 
 public final class com/seanproctor/docking/spi/DockingWindowHostKt {
+	public static final fun getLocalDockingDragHandover ()Landroidx/compose/runtime/ProvidableCompositionLocal;
 	public static final fun getLocalDockingWindowMoveHandle ()Landroidx/compose/runtime/ProvidableCompositionLocal;
 	public static final fun getWindowHost (Lcom/seanproctor/docking/state/DockState;)Lcom/seanproctor/docking/spi/DockingWindowHost;
 }

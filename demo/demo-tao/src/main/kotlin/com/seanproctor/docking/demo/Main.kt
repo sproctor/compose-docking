@@ -31,8 +31,7 @@ import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.state.rememberDockState
 import com.seanproctor.docking.tao.TaoFloatingDockWindows
-import com.seanproctor.docking.tao.registerTaoDockingWindow
-import com.seanproctor.docking.ui.DockArea
+import com.seanproctor.docking.tao.TaoDockArea
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.window.TitleBar
@@ -49,8 +48,8 @@ import org.jetbrains.jewel.ui.component.Text
  *
  *     ./gradlew :demo:demo-tao:run
  *
- * Run with `GDK_BACKEND=x11` on a Wayland session to get placeable windows, and with it
- * drags between windows; native Wayland supports drags within a window and tearing off.
+ * On native Wayland, drags between windows ride the platform's drag-and-drop session; run
+ * with `GDK_BACKEND=x11` for the screen-coordinate path X11, Windows and macOS take.
  */
 fun main(args: Array<String>) {
     val alwaysUseTabs = "--always-use-tabs" in args
@@ -80,7 +79,6 @@ fun main(args: Array<String>) {
                 title = "Compose Docking Tao Demo",
             ) {
                 JewelDocking {
-                    registerTaoDockingWindow(state)
                     Column(Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground)) {
                         TitleBar { _ ->
                             CompositionLocalProvider(LocalContentColor provides LocalTitleBarStyle.current.colors.content) {
@@ -96,7 +94,7 @@ fun main(args: Array<String>) {
                             }
                         }
                         Box(Modifier.weight(1f)) {
-                            DockArea(state, modifier = Modifier.fillMaxSize())
+                            TaoDockArea(state, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }

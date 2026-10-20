@@ -33,12 +33,10 @@ import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.spi.LocalDockingWindowMoveHandle
 import com.seanproctor.docking.spi.windowHost
 import com.seanproctor.docking.state.DockState
-import com.seanproctor.docking.ui.DockArea
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
 import dev.nucleusframework.application.NucleusWindow
-import dev.nucleusframework.window.windowDragArea
 import kotlin.math.abs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -101,17 +99,18 @@ public val LocalTaoFloatingWindowHost: ProvidableCompositionLocal<TaoFloatingWin
  *     val state = rememberDockState(...) { ... }
  *     DecoratedWindow(onCloseRequest = ::exitApplication, title = "App") {
  *         JewelDocking {
- *             registerTaoDockingWindow(state)
- *             DockArea(state, Modifier.fillMaxSize())
+ *             TaoDockArea(state, modifier = Modifier.fillMaxSize())
  *         }
  *     }
  *     JewelDocking { TaoFloatingDockWindows(state) }
  * }
  * ```
  *
- * On native Wayland, where windows cannot be placed, there is no preview window (the dock
- * area draws its in-window card instead) and a floating window's header moves it through
- * the compositor, which means it cannot be dropped onto another dock area.
+ * On native Wayland, where windows cannot be placed, drags ride the platform's
+ * drag-and-drop session (see [TaoDockArea]): the compositor draws the drag icon, so there is
+ * no preview window, and a floating window's header drags its panel rather than the window,
+ * so it can be dropped back into another one. Moving a floating window itself is then the
+ * compositor's (Super+drag on GNOME), and where a torn-off window opens is too.
  */
 @Composable
 public fun NucleusApplicationScope.TaoFloatingDockWindows(
@@ -164,43 +163,28 @@ private fun NucleusApplicationScope.FloatingDockWindow(
 
     with(host) {
         FloatingWindow(model) {
-            registerTaoDockingWindow(state, windowId)
             val density = LocalDensity.current.density
             val nucleusWindow = nucleusWindow
+            // On native Wayland the header drags the panel through the platform session
+            // instead, which is what lets it be dropped back into another window; moving
+            // the window itself is then the compositor's (Super+drag on GNOME).
             val moveHandle: (@Composable (@Composable () -> Unit) -> Unit)? =
-                if (loneDockable == null) {
+                if (loneDockable == null || !nucleusWindow.isPlaceable) {
                     null
                 } else {
                     remember(state, windowId, loneDockable, density, nucleusWindow) {
                         { header ->
-                            Box(headerMoveModifier(state, windowId, loneDockable, density, nucleusWindow)) {
+                            Box(Modifier.windowDragToDock(state, windowId, loneDockable, density, nucleusWindow)) {
                                 header()
                             }
                         }
                     }
                 }
             CompositionLocalProvider(LocalDockingWindowMoveHandle provides moveHandle) {
-                DockArea(state, windowId, Modifier.fillMaxSize())
+                TaoDockArea(state, windowId, Modifier.fillMaxSize())
             }
         }
     }
-}
-
-/**
- * The gesture on a floating window's header. Where windows can be placed it moves the window
- * from Compose and, let go over another dock area, docks the panel there; on native Wayland
- * it hands the move to the compositor, which is the only way to move a window there.
- */
-private fun headerMoveModifier(
-    state: DockState,
-    windowId: WindowId,
-    dockableId: DockableId,
-    density: Float,
-    window: NucleusWindow,
-): Modifier {
-    val tao = window.unsafe.taoWindow
-    if (tao != null && !tao.canPlaceOnScreen) return Modifier.windowDragArea(tao)
-    return Modifier.windowDragToDock(state, windowId, dockableId, density, window)
 }
 
 /**
@@ -339,8 +323,10 @@ private val DragPreviewSize = DpSize(240.dp, 48.dp)
 private fun NucleusApplicationScope.DragPreviewWindow(state: DockState) {
     val integration = taoIntegration(state)
     val placeable = integration.windows[WindowId.MAIN]?.isPlaceable ?: true
-    DisposableEffect(state, placeable) {
-        state.windowHost.drawsDragPreview = placeable
+    // Both ways the preview is the adapter's: this window where windows can be placed, the
+    // compositor's drag icon (the platform session's) where they cannot.
+    DisposableEffect(state) {
+        state.windowHost.drawsDragPreview = true
         onDispose { state.windowHost.drawsDragPreview = false }
     }
     if (!placeable) return

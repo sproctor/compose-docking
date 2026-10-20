@@ -1,3 +1,5 @@
+@file:OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
+
 package com.seanproctor.docking.ui
 
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -21,6 +23,8 @@ import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.NodeId
+import com.seanproctor.docking.spi.DockDragGrip
+import com.seanproctor.docking.spi.LocalDockingDragHandover
 import com.seanproctor.docking.state.DockState
 
 /**
@@ -80,6 +84,9 @@ private suspend fun PointerInputScope.dockPointerHandler(
     onDragPastSlop: (down: Offset, current: PointerInputChange) -> Boolean,
     onMove: (current: PointerInputChange) -> Unit = {},
     onRelease: (current: PointerInputChange?) -> Unit = {},
+    // False when a DockingDragHandover owns the drag: presses and clicks only, and movement
+    // past slop just means this is not a click.
+    dragEnabled: Boolean = true,
 ) {
     awaitEachGesture {
         val down = awaitFirstDown()
@@ -111,7 +118,7 @@ private suspend fun PointerInputScope.dockPointerHandler(
                 if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
                     dragging = true
                     clicks.reset() // a drag is not a click
-                    handedOff = onDragPastSlop(down.position, change)
+                    handedOff = if (dragEnabled) onDragPastSlop(down.position, change) else true
                 }
             } else {
                 change.consume()
@@ -126,14 +133,33 @@ private suspend fun PointerInputScope.dockPointerHandler(
 @Composable
 internal fun DockAreaScope.headerGestureModifier(id: DockableId): Modifier {
     val coords = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val handover = LocalDockingDragHandover.current
+    val grip =
+        handover?.let {
+            val title = state.registry[id]?.title?.invoke() ?: id.value
+            remember(this, id, title) {
+                DockDragGrip(
+                    key = "header:" + id.value,
+                    windowId = windowId,
+                    title = title,
+                    coordinates = { coords.value },
+                    sourceBounds = { bounds.boundsOf(id) },
+                    onBegin = { position -> beginPlatformDrag(DragSource.Header(id), position, bounds.boundsOf(id)?.size) },
+                    onStayLocal = { false },
+                    onEndLocal = { _, _ -> },
+                )
+            }
+        }
     return Modifier
         .onGloballyPositioned { coords.value = it }
-        .pointerInput(id) {
+        .let { if (handover != null && grip != null) it.then(handover.gripModifier(grip)) else it }
+        .pointerInput(id, handover) {
             dockPointerHandler(
                 clicks = clicks,
                 clickTarget = "header:" + id.value,
                 onPress = { state.activeDockable = id },
                 onDoubleClick = { state.toggleMaximizeIfAllowed(id) },
+                dragEnabled = handover == null,
                 onDragPastSlop = { _, change ->
                     val c = coords.value ?: return@dockPointerHandler false
                     state.dragController.startDrag(
@@ -157,12 +183,15 @@ internal fun DockAreaScope.tabGestureModifier(
     val currentIndex by rememberUpdatedState(index)
     val nodeId = node.id
     val coords = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val handover = LocalDockingDragHandover.current
+    val grip = handover?.let { tabGrip(nodeId, id, coords) { currentIndex } }
     return Modifier
         .onGloballyPositioned {
             coords.value = it
             bounds.updateTab(nodeId, index, it.boundsInRoot())
         }
-        .pointerInput(nodeId, id) {
+        .let { if (handover != null && grip != null) it.then(handover.gripModifier(grip)) else it }
+        .pointerInput(nodeId, id, handover) {
             fun rootPos(change: PointerInputChange): Offset =
                 coords.value?.localToRoot(change.position) ?: change.position
 
@@ -185,6 +214,7 @@ internal fun DockAreaScope.tabGestureModifier(
                     state.activeDockable = id
                 },
                 onDoubleClick = { state.toggleMaximizeIfAllowed(id) },
+                dragEnabled = handover == null,
                 onDragPastSlop = { _, change ->
                     escalated = false
                     val strip = bounds.tabStripRects[nodeId]
@@ -233,14 +263,35 @@ internal fun DockAreaScope.tabGestureModifier(
 internal fun DockAreaScope.gutterGestureModifier(node: DockNode.Tabs): Modifier {
     val nodeId = node.id
     val coords = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val handover = LocalDockingDragHandover.current
+    val grip =
+        handover?.let {
+            val title = state.registry[node.selectedTab.dockableId]?.title?.invoke() ?: node.selectedTab.dockableId.value
+            remember(this, nodeId, title) {
+                DockDragGrip(
+                    key = "gutter:" + nodeId.value,
+                    windowId = windowId,
+                    title = title,
+                    coordinates = { coords.value },
+                    sourceBounds = { bounds.boundsOfNode(nodeId) },
+                    onBegin = { position ->
+                        beginPlatformDrag(DragSource.TabGroup(nodeId), position, bounds.boundsOfNode(nodeId)?.size)
+                    },
+                    onStayLocal = { false },
+                    onEndLocal = { _, _ -> },
+                )
+            }
+        }
     return Modifier
         .onGloballyPositioned { coords.value = it }
-        .pointerInput(nodeId) {
+        .let { if (handover != null && grip != null) it.then(handover.gripModifier(grip)) else it }
+        .pointerInput(nodeId, handover) {
             dockPointerHandler(
                 clicks = clicks,
                 clickTarget = "gutter:" + nodeId.value,
                 onPress = {},
                 onDoubleClick = {},
+                dragEnabled = handover == null,
                 onDragPastSlop = { _, change ->
                     val c = coords.value ?: return@dockPointerHandler false
                     state.dragController.startDrag(
@@ -256,6 +307,72 @@ internal fun DockAreaScope.gutterGestureModifier(node: DockNode.Tabs): Modifier 
 }
 
 private fun DockAreaScope.stripEscapeSlackPx(): Float = 8f * density
+
+/**
+ * Starts a drag that the platform's drag-and-drop session carries from here on (see
+ * [com.seanproctor.docking.spi.DockingDragHandover]): the root listeners leave it to the
+ * windows' drop targets.
+ */
+private fun DockAreaScope.beginPlatformDrag(
+    source: DragSource,
+    positionInWindow: Offset,
+    sourceSize: Size?,
+): Boolean {
+    val controller = state.dragController
+    if (controller.session != null) return false
+    controller.startDrag(source = source, positionInWindow = positionInWindow, windowId = windowId, sourceSize = sourceSize)
+    val session = controller.session ?: return false
+    session.carriedByPlatform = true
+    return true
+}
+
+/**
+ * A tab's grip under a [com.seanproctor.docking.spi.DockingDragHandover]: it reorders within
+ * its strip while the pointer stays there, the way the core's own gesture does, and begins
+ * the drag the moment the pointer leaves the strip.
+ */
+@Composable
+private fun DockAreaScope.tabGrip(
+    nodeId: NodeId,
+    id: DockableId,
+    coords: androidx.compose.runtime.MutableState<LayoutCoordinates?>,
+    currentIndex: () -> Int,
+): DockDragGrip {
+    val title = state.registry[id]?.title?.invoke() ?: id.value
+    return remember(this, nodeId, id, title) {
+        fun inStrip(position: Offset): Boolean = bounds.tabStripRects[nodeId]?.inflate(stripEscapeSlackPx())?.contains(position) == true
+        DockDragGrip(
+            key = "tab:" + id.value,
+            windowId = windowId,
+            title = title,
+            coordinates = { coords.value },
+            sourceBounds = { bounds.boundsOf(id) },
+            onBegin = { position ->
+                tabReorder = null
+                beginPlatformDrag(DragSource.Tab(id, nodeId), position, bounds.boundsOf(id)?.size)
+            },
+            onStayLocal = { position ->
+                if (!inStrip(position)) {
+                    tabReorder = null
+                    false
+                } else {
+                    val reorder = tabReorder ?: TabReorderState(nodeId, id, currentIndex()).also { tabReorder = it }
+                    val tabRect = bounds.tabRects[nodeId]?.get(reorder.fromIndex)
+                    reorder.offsetX = position.x - (tabRect?.center?.x ?: position.x)
+                    true
+                }
+            },
+            onEndLocal = { released, position ->
+                val reorder = tabReorder
+                tabReorder = null
+                if (released && reorder != null && position != null && inStrip(position)) {
+                    val target = bounds.reorderTargetIndex(reorder.group, reorder.fromIndex, position.x)
+                    state.moveTab(reorder.group, reorder.fromIndex, target)
+                }
+            },
+        )
+    }
+}
 
 /** Live x-offset of a tab while it is being reordered. */
 internal fun DockAreaScope.tabReorderOffset(nodeId: NodeId, id: DockableId): Float {

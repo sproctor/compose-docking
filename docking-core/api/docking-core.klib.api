@@ -155,6 +155,10 @@ abstract interface com.seanproctor.docking.persistence/LayoutStorage { // com.se
     abstract suspend fun save(kotlin/String) // com.seanproctor.docking.persistence/LayoutStorage.save|save(kotlin.String){}[0]
 }
 
+abstract interface com.seanproctor.docking.spi/DockingDragHandover { // com.seanproctor.docking.spi/DockingDragHandover|null[0]
+    abstract fun gripModifier(com.seanproctor.docking.spi/DockDragGrip, androidx.compose.runtime/Composer?, kotlin/Int): androidx.compose.ui/Modifier // com.seanproctor.docking.spi/DockingDragHandover.gripModifier|gripModifier(com.seanproctor.docking.spi.DockDragGrip;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
+}
+
 abstract interface com.seanproctor.docking.spi/DockingRenderer { // com.seanproctor.docking.spi/DockingRenderer|null[0]
     abstract fun DockableHeader(com.seanproctor.docking.spi/HeaderModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.DockableHeader|DockableHeader(com.seanproctor.docking.spi.HeaderModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
     abstract fun DockingHandle(com.seanproctor.docking.spi/HandleModel, androidx.compose.ui/Modifier, androidx.compose.runtime/Composer?, kotlin/Int) // com.seanproctor.docking.spi/DockingRenderer.DockingHandle|DockingHandle(com.seanproctor.docking.spi.HandleModel;androidx.compose.ui.Modifier;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
@@ -943,6 +947,22 @@ final class com.seanproctor.docking.spi/DividerModel { // com.seanproctor.dockin
         final fun <get-orientation>(): com.seanproctor.docking.model/SplitOrientation // com.seanproctor.docking.spi/DividerModel.orientation.<get-orientation>|<get-orientation>(){}[0]
 }
 
+final class com.seanproctor.docking.spi/DockDragGrip { // com.seanproctor.docking.spi/DockDragGrip|null[0]
+    final val key // com.seanproctor.docking.spi/DockDragGrip.key|{}key[0]
+        final fun <get-key>(): kotlin/Any // com.seanproctor.docking.spi/DockDragGrip.key.<get-key>|<get-key>(){}[0]
+    final val sourceBoundsInWindow // com.seanproctor.docking.spi/DockDragGrip.sourceBoundsInWindow|{}sourceBoundsInWindow[0]
+        final fun <get-sourceBoundsInWindow>(): androidx.compose.ui.geometry/Rect? // com.seanproctor.docking.spi/DockDragGrip.sourceBoundsInWindow.<get-sourceBoundsInWindow>|<get-sourceBoundsInWindow>(){}[0]
+    final val title // com.seanproctor.docking.spi/DockDragGrip.title|{}title[0]
+        final fun <get-title>(): kotlin/String // com.seanproctor.docking.spi/DockDragGrip.title.<get-title>|<get-title>(){}[0]
+    final val windowId // com.seanproctor.docking.spi/DockDragGrip.windowId|{}windowId[0]
+        final fun <get-windowId>(): com.seanproctor.docking.model/WindowId // com.seanproctor.docking.spi/DockDragGrip.windowId.<get-windowId>|<get-windowId>(){}[0]
+
+    final fun begin(androidx.compose.ui.geometry/Offset): kotlin/Boolean // com.seanproctor.docking.spi/DockDragGrip.begin|begin(androidx.compose.ui.geometry.Offset){}[0]
+    final fun endLocal(kotlin/Boolean, androidx.compose.ui.geometry/Offset?) // com.seanproctor.docking.spi/DockDragGrip.endLocal|endLocal(kotlin.Boolean;androidx.compose.ui.geometry.Offset?){}[0]
+    final fun stayLocal(androidx.compose.ui.geometry/Offset): kotlin/Boolean // com.seanproctor.docking.spi/DockDragGrip.stayLocal|stayLocal(androidx.compose.ui.geometry.Offset){}[0]
+    final fun toWindow(androidx.compose.ui.geometry/Offset): androidx.compose.ui.geometry/Offset // com.seanproctor.docking.spi/DockDragGrip.toWindow|toWindow(androidx.compose.ui.geometry.Offset){}[0]
+}
+
 final class com.seanproctor.docking.spi/DockingTheme { // com.seanproctor.docking.spi/DockingTheme|null[0]
     constructor <init>(androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ..., androidx.compose.ui.graphics/Color = ...) // com.seanproctor.docking.spi/DockingTheme.<init>|<init>(androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color;androidx.compose.ui.graphics.Color){}[0]
 
@@ -987,9 +1007,12 @@ final class com.seanproctor.docking.spi/DockingWindowHost { // com.seanproctor.d
     final fun cancel() // com.seanproctor.docking.spi/DockingWindowHost.cancel|cancel(){}[0]
     final fun clearScreenConverter(com.seanproctor.docking.model/WindowId) // com.seanproctor.docking.spi/DockingWindowHost.clearScreenConverter|clearScreenConverter(com.seanproctor.docking.model.WindowId){}[0]
     final fun drop() // com.seanproctor.docking.spi/DockingWindowHost.drop|drop(){}[0]
+    final fun dropOutside() // com.seanproctor.docking.spi/DockingWindowHost.dropOutside|dropOutside(){}[0]
+    final fun leaveWindows() // com.seanproctor.docking.spi/DockingWindowHost.leaveWindows|leaveWindows(){}[0]
     final fun setScreenConverter(com.seanproctor.docking.model/WindowId, kotlin/Function1<androidx.compose.ui.geometry/Offset, androidx.compose.ui.geometry/Offset>, kotlin/Function1<androidx.compose.ui.geometry/Offset, androidx.compose.ui.geometry/Offset>) // com.seanproctor.docking.spi/DockingWindowHost.setScreenConverter|setScreenConverter(com.seanproctor.docking.model.WindowId;kotlin.Function1<androidx.compose.ui.geometry.Offset,androidx.compose.ui.geometry.Offset>;kotlin.Function1<androidx.compose.ui.geometry.Offset,androidx.compose.ui.geometry.Offset>){}[0]
     final fun startWindowDrag(com.seanproctor.docking.model/DockableId, com.seanproctor.docking.model/WindowId, androidx.compose.ui.geometry/Offset): kotlin/Boolean // com.seanproctor.docking.spi/DockingWindowHost.startWindowDrag|startWindowDrag(com.seanproctor.docking.model.DockableId;com.seanproctor.docking.model.WindowId;androidx.compose.ui.geometry.Offset){}[0]
     final fun updateDrag(androidx.compose.ui.geometry/Offset, com.seanproctor.docking.model/WindowId) // com.seanproctor.docking.spi/DockingWindowHost.updateDrag|updateDrag(androidx.compose.ui.geometry.Offset;com.seanproctor.docking.model.WindowId){}[0]
+    final fun updateDragInWindow(androidx.compose.ui.geometry/Offset, com.seanproctor.docking.model/WindowId) // com.seanproctor.docking.spi/DockingWindowHost.updateDragInWindow|updateDragInWindow(androidx.compose.ui.geometry.Offset;com.seanproctor.docking.model.WindowId){}[0]
 }
 
 final class com.seanproctor.docking.spi/DragPreviewInfo { // com.seanproctor.docking.spi/DragPreviewInfo|null[0]
@@ -1385,6 +1408,8 @@ final val com.seanproctor.docking.persistence/com_seanproctor_docking_persistenc
 final val com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedNode_Tabs_$serializer$stableprop // com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedNode_Tabs_$serializer$stableprop|#static{}com_seanproctor_docking_persistence_PersistedNode_Tabs_$serializer$stableprop[0]
 final val com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow$stableprop // com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow$stableprop|#static{}com_seanproctor_docking_persistence_PersistedWindow$stableprop[0]
 final val com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop // com.seanproctor.docking.persistence/com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop|#static{}com_seanproctor_docking_persistence_PersistedWindow_$serializer$stableprop[0]
+final val com.seanproctor.docking.spi/LocalDockingDragHandover // com.seanproctor.docking.spi/LocalDockingDragHandover|{}LocalDockingDragHandover[0]
+    final fun <get-LocalDockingDragHandover>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.spi/DockingDragHandover?> // com.seanproctor.docking.spi/LocalDockingDragHandover.<get-LocalDockingDragHandover>|<get-LocalDockingDragHandover>(){}[0]
 final val com.seanproctor.docking.spi/LocalDockingRenderer // com.seanproctor.docking.spi/LocalDockingRenderer|{}LocalDockingRenderer[0]
     final fun <get-LocalDockingRenderer>(): androidx.compose.runtime/ProvidableCompositionLocal<com.seanproctor.docking.spi/DockingRenderer> // com.seanproctor.docking.spi/LocalDockingRenderer.<get-LocalDockingRenderer>|<get-LocalDockingRenderer>(){}[0]
 final val com.seanproctor.docking.spi/LocalDockingTheme // com.seanproctor.docking.spi/LocalDockingTheme|{}LocalDockingTheme[0]
@@ -1394,6 +1419,7 @@ final val com.seanproctor.docking.spi/LocalDockingWindowMoveHandle // com.seanpr
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop|#static{}com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop|#static{}com_seanproctor_docking_spi_DebugDockingRenderer$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop|#static{}com_seanproctor_docking_spi_DividerModel$stableprop[0]
+final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockDragGrip$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockDragGrip$stableprop|#static{}com_seanproctor_docking_spi_DockDragGrip$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop|#static{}com_seanproctor_docking_spi_DockingTheme$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingWindowHost$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingWindowHost$stableprop|#static{}com_seanproctor_docking_spi_DockingWindowHost$stableprop[0]
 final val com.seanproctor.docking.spi/com_seanproctor_docking_spi_DragPreviewInfo$stableprop // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DragPreviewInfo$stableprop|#static{}com_seanproctor_docking_spi_DragPreviewInfo$stableprop[0]
@@ -1482,6 +1508,7 @@ final fun com.seanproctor.docking.persistence/rememberAutoPersist(com.seanprocto
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter|com_seanproctor_docking_spi_CollapsedAnchorModel$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter|com_seanproctor_docking_spi_DebugDockingRenderer$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DividerModel$stableprop_getter|com_seanproctor_docking_spi_DividerModel$stableprop_getter(){}[0]
+final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockDragGrip$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockDragGrip$stableprop_getter|com_seanproctor_docking_spi_DockDragGrip$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingTheme$stableprop_getter|com_seanproctor_docking_spi_DockingTheme$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingWindowHost$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DockingWindowHost$stableprop_getter|com_seanproctor_docking_spi_DockingWindowHost$stableprop_getter(){}[0]
 final fun com.seanproctor.docking.spi/com_seanproctor_docking_spi_DragPreviewInfo$stableprop_getter(): kotlin/Int // com.seanproctor.docking.spi/com_seanproctor_docking_spi_DragPreviewInfo$stableprop_getter|com_seanproctor_docking_spi_DragPreviewInfo$stableprop_getter(){}[0]

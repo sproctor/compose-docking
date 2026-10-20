@@ -133,7 +133,10 @@ internal fun Modifier.dragSessionRootListener(scope: DockAreaScope): Modifier = 
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 val controller = scope.state.dragController
-                if (controller.session == null) continue
+                val session = controller.session ?: continue
+                // The platform's drag-and-drop session owns the pointer: the drop targets
+                // report it, and a stray event here must not drop the payload early.
+                if (session.carriedByPlatform) continue
                 when (event.type) {
                     PointerEventType.Move -> {
                         event.changes.forEach { it.consume() }
