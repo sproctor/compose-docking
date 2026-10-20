@@ -19,8 +19,7 @@ private val FLOATING = WindowId("floating")
 /**
  * Which window a cross-window drag is over. Placeable windows are hit-tested in the shared
  * screen space (physical pixels: logical bounds times the window's density); on native
- * Wayland every window reports (0, 0), so only the focused one can be resolved, in its own
- * pixels.
+ * Wayland there is no shared space, and nothing is.
  */
 class TaoDockingIntegrationTest {
     private fun integration(placeable: Boolean): TaoDockingIntegration =
@@ -72,14 +71,34 @@ class TaoDockingIntegrationTest {
     }
 
     @Test
-    fun onWaylandOnlyTheFocusedWindowResolvesInItsOwnPixels() {
+    fun windowsThatCannotBePlacedAreNeverHit() {
         val integration = integration(placeable = false)
-        integration.add(WindowId.MAIN, FakeWindow(NucleusWindowBounds(0f, 0f, 800f, 600f)), density = 1f)
-        integration.add(FLOATING, FakeWindow(NucleusWindowBounds(0f, 0f, 300f, 200f), focused = true), density = 1f)
+        integration.add(WindowId.MAIN, FakeWindow(NucleusWindowBounds(0f, 0f, 800f, 600f), focused = true), density = 1f)
 
-        assertEquals(FLOATING, integration.resolveWindowAt(Offset(150f, 150f), exclude = null))
-        // Outside the focused window's own size: off it, so the panel tears off.
-        assertNull(integration.resolveWindowAt(Offset(500f, 150f), exclude = null))
+        // Native Wayland: the platform session carries drags there, not the shared space.
+        assertNull(integration.resolveWindowAt(Offset(150f, 150f), exclude = null))
+        assertEquals(false, integration.windowsPlaceable)
+    }
+
+    @Test
+    fun placeabilityIsUnknownUntilAWindowRegisters() {
+        val integration = integration(placeable = true)
+        assertNull(integration.windowsPlaceable)
+
+        integration.add(FLOATING, FakeWindow(NucleusWindowBounds(0f, 0f, 300f, 200f)), density = 1f)
+        assertEquals(true, integration.windowsPlaceable, "any window answers, not only the main one")
+    }
+
+    @Test
+    fun aWindowBeingMovedIsWhereItWasAskedToGo() {
+        val integration = integration(placeable = true)
+        // The window system has not confirmed the move yet: the bounds still say (100, 100).
+        integration.add(FLOATING, FakeWindow(NucleusWindowBounds(100f, 100f, 300f, 200f)), density = 2f)
+        integration.movingOrigins[FLOATING] = Offset(140f, 120f)
+
+        assertEquals(Offset(280f, 240f), integration.originOf(FLOATING))
+        assertEquals(FLOATING, integration.resolveWindowAt(Offset(285f, 245f), exclude = null))
+        assertNull(integration.resolveWindowAt(Offset(210f, 210f), exclude = null))
     }
 
     private fun TaoDockingIntegration.add(

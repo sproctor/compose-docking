@@ -33,4 +33,6 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.core)
+    testImplementation(compose.desktop.currentOs)
+    testImplementation(compose.desktop.uiTestJUnit4)
 }

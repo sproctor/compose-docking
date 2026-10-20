@@ -16,20 +16,20 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import com.seanproctor.docking.desktop.FloatingWindowModel
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockWindow
 import com.seanproctor.docking.model.DockableId
-import com.seanproctor.docking.model.WindowBounds
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.spi.LocalDockingRenderer
+import com.seanproctor.docking.spi.SyncDockWindowBounds
 import com.seanproctor.docking.spi.LocalDockingWindowMoveHandle
 import com.seanproctor.docking.spi.windowHost
 import com.seanproctor.docking.state.DockState
@@ -37,9 +37,6 @@ import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
 import dev.nucleusframework.application.NucleusWindow
-import kotlin.math.abs
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
 
 /**
  * Creates the OS window for a floating dock area, the Nucleus counterpart of
@@ -139,7 +136,7 @@ private fun NucleusApplicationScope.FloatingDockWindow(
                     ?: WindowPosition.PlatformDefault,
             size = bounds?.let { DpSize(it.width.dp, it.height.dp) } ?: DpSize(400.dp, 300.dp),
         )
-    SyncWindowBounds(state, window.id, windowState)
+    SyncDockWindowBounds(state, window.id, windowState)
 
     val windowId = window.id
     val spec = window.root?.firstDockable()?.let { state.registry[it] }
@@ -207,7 +204,11 @@ private fun Modifier.windowDragToDock(
             val down = awaitFirstDown()
             state.activeDockable = dockableId
             val origin = down.position
+            val integration = taoIntegration(state)
             var dragging = false
+            // Where the window was asked to go: reading it back from the window system would
+            // re-add drift a move still in flight already covers.
+            var requested: Offset? = null
             try {
                 while (true) {
                     val event = awaitPointerEvent()
@@ -227,73 +228,30 @@ private fun Modifier.windowDragToDock(
                     }
                     if (!dragging && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         dragging = host.startWindowDrag(dockableId, windowId, change.position)
+                        requested = window.boundsOnScreen()?.let { Offset(it.x, it.y) }
                     }
                     if (dragging) {
                         change.consume()
                         val drift = change.position - origin
-                        val bounds = window.boundsOnScreen()
                         val tao = window.unsafe.taoWindow
-                        if (bounds != null && tao != null) {
-                            tao.setOuterPosition(
-                                (bounds.x + drift.x / density).toDouble(),
-                                (bounds.y + drift.y / density).toDouble(),
-                            )
+                        val from = requested
+                        if (from != null && tao != null) {
+                            val next = from + drift / density
+                            requested = next
+                            integration.movingOrigins[windowId] = next
+                            tao.setOuterPosition(next.x.toDouble(), next.y.toDouble())
                         }
                         host.updateDrag(change.position, windowId)
                     }
                 }
             } finally {
+                integration.movingOrigins.remove(windowId)
                 // Every other way out (the pointer vanishing, the composable leaving) would
                 // leave the session open, and an open session turns away every later drag.
                 if (dragging) host.cancel()
             }
         }
     }
-
-/**
- * Two-way bounds sync: OS moves and resizes flow into the layout (debounced, for
- * persistence); layout changes from a restore flow back to the window.
- */
-@OptIn(FlowPreview::class)
-@Composable
-private fun SyncWindowBounds(
-    state: DockState,
-    windowId: WindowId,
-    windowState: WindowState,
-) {
-    LaunchedEffect(state, windowId, windowState) {
-        snapshotFlow { windowState.position to windowState.size }
-            .debounce(100)
-            .collect { (position, size) ->
-                if (position is WindowPosition.Absolute) {
-                    val next = WindowBounds(position.x.value, position.y.value, size.width.value, size.height.value)
-                    if (!next.approximately(state.layout.window(windowId)?.bounds)) {
-                        state.setWindowBounds(windowId, next)
-                    }
-                }
-            }
-    }
-    LaunchedEffect(state, windowId, windowState) {
-        snapshotFlow { state.layout.window(windowId)?.bounds }
-            .collect { bounds ->
-                if (bounds != null) {
-                    val current = windowState.position
-                    val matches =
-                        current is WindowPosition.Absolute &&
-                            WindowBounds(
-                                current.x.value,
-                                current.y.value,
-                                windowState.size.width.value,
-                                windowState.size.height.value,
-                            ).approximately(bounds)
-                    if (!matches) {
-                        windowState.position = WindowPosition.Absolute(bounds.x.dp, bounds.y.dp)
-                        windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
-                    }
-                }
-            }
-    }
-}
 
 /** The first dockable in [this] subtree, in layout order: what a floating window is named after. */
 private fun DockNode.firstDockable(): DockableId? =
@@ -303,13 +261,6 @@ private fun DockNode.firstDockable(): DockableId? =
         is DockNode.Split -> first.firstDockable() ?: second.firstDockable()
         is DockNode.Anchor -> null
     }
-
-private fun WindowBounds.approximately(other: WindowBounds?): Boolean =
-    other != null &&
-        abs(x - other.x) < 1f &&
-        abs(y - other.y) < 1f &&
-        abs(width - other.width) < 1f &&
-        abs(height - other.height) < 1f
 
 /** Size of the window following the pointer during a drag; the renderer's card sits inside it. */
 private val DragPreviewSize = DpSize(240.dp, 48.dp)
@@ -322,15 +273,15 @@ private val DragPreviewSize = DpSize(240.dp, 48.dp)
 @Composable
 private fun NucleusApplicationScope.DragPreviewWindow(state: DockState) {
     val integration = taoIntegration(state)
-    val placeable = integration.windows[WindowId.MAIN]?.isPlaceable ?: true
     // Both ways the preview is the adapter's: this window where windows can be placed, the
     // compositor's drag icon (the platform session's) where they cannot.
     DisposableEffect(state) {
         state.windowHost.drawsDragPreview = true
         onDispose { state.windowHost.drawsDragPreview = false }
     }
-    if (!placeable) return
     val preview = state.windowHost.dragPreview ?: return
+    // Asked once a drag runs, when the window it started in is registered.
+    if (integration.windowsPlaceable != true) return
     val density = integration.densities[preview.originWindow] ?: 1f
     val windowState =
         rememberWindowState(

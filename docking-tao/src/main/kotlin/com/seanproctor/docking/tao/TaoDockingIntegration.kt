@@ -21,12 +21,34 @@ import java.util.WeakHashMap
  * bounds ([NucleusWindow.boundsOnScreen]) times its own density.
  */
 internal class TaoDockingIntegration(
-    private val state: DockState,
+    // Not a property: integrations are kept in a WeakHashMap keyed by the state, and a
+    // value that held its key would keep every discarded state alive.
+    state: DockState,
     /** Whether a window's screen position can be read and set; see [isPlaceable]. */
     private val placeable: (NucleusWindow) -> Boolean = { it.isPlaceable },
 ) {
     val windows = LinkedHashMap<WindowId, NucleusWindow>()
     val densities = HashMap<WindowId, Float>()
+
+    /**
+     * Logical screen positions of windows being moved by a drag, as requested: a move takes
+     * effect asynchronously, so [NucleusWindow.boundsOnScreen] lags behind until the window
+     * system confirms it.
+     */
+    val movingOrigins = HashMap<WindowId, Offset>()
+
+    /**
+     * The window that took the drop of the platform-carried drag in flight (native Wayland),
+     * recorded by its drop target for the drag's end to act on.
+     */
+    var transferDropWindow: WindowId? = null
+
+    /**
+     * Whether windows can be placed on screen, asked of any registered window (it is a
+     * property of the display, not of one window); null while none is registered.
+     */
+    val windowsPlaceable: Boolean?
+        get() = windows.values.firstOrNull()?.let(placeable)
 
     init {
         state.windowHost.windowResolver = { screen, exclude -> resolveWindowAt(screen, exclude) }
@@ -38,9 +60,8 @@ internal class TaoDockingIntegration(
      * stack above it). [exclude] is the window being dragged, which is always under the
      * pointer and would otherwise mask what it is dragged over.
      *
-     * Where windows cannot be placed (native Wayland) there is no shared space: every window
-     * reports its origin as (0, 0), and positions are each window's own. Only the window the
-     * drag is in - the focused one, which holds the pointer - can then be resolved.
+     * Windows that cannot be placed (native Wayland) are never hit: there is no shared space
+     * there, and [TaoDockArea] carries their drags in the platform session instead.
      */
     internal fun resolveWindowAt(
         screen: Offset,
@@ -50,11 +71,8 @@ internal class TaoDockingIntegration(
             windows.entries.filter { (id, window) ->
                 id != exclude && placeable(window) && screenRectOf(id, window)?.contains(screen) == true
             }
-        if (hits.isNotEmpty()) return (hits.firstOrNull { it.value.isFocused } ?: hits.last()).key
-        return windows.entries
-            .firstOrNull { (id, window) ->
-                id != exclude && !placeable(window) && window.isFocused && localRectOf(id, window)?.contains(screen) == true
-            }?.key
+        if (hits.isEmpty()) return null
+        return (hits.firstOrNull { it.value.isFocused } ?: hits.last()).key
     }
 
     fun screenRectOf(
@@ -63,28 +81,21 @@ internal class TaoDockingIntegration(
     ): Rect? {
         val bounds = window.boundsOnScreen() ?: return null
         val density = densities[id] ?: 1f
+        val origin = movingOrigins[id] ?: Offset(bounds.x, bounds.y)
         return Rect(
-            bounds.x * density,
-            bounds.y * density,
-            (bounds.x + bounds.width) * density,
-            (bounds.y + bounds.height) * density,
+            origin.x * density,
+            origin.y * density,
+            (origin.x + bounds.width) * density,
+            (origin.y + bounds.height) * density,
         )
-    }
-
-    private fun localRectOf(
-        id: WindowId,
-        window: NucleusWindow,
-    ): Rect? {
-        val bounds = window.boundsOnScreen() ?: return null
-        val density = densities[id] ?: 1f
-        return Rect(0f, 0f, bounds.width * density, bounds.height * density)
     }
 
     /** [id]'s content origin in the shared space, or null while it is not on screen. */
     fun originOf(id: WindowId): Offset? {
         val window = windows[id] ?: return null
-        val bounds = window.boundsOnScreen() ?: return null
         val density = densities[id] ?: 1f
+        movingOrigins[id]?.let { return it * density }
+        val bounds = window.boundsOnScreen() ?: return null
         return Offset(bounds.x * density, bounds.y * density)
     }
 }
@@ -113,15 +124,12 @@ public fun DockState.nucleusWindow(windowId: WindowId = WindowId.MAIN): NucleusW
 
 /**
  * Connects the surrounding Nucleus window to the docking system: screen-coordinate
- * conversion for cross-window drags, and finding the window a drop lands in. [TaoDockArea]
- * calls it; call it yourself only around a plain [com.seanproctor.docking.ui.DockArea].
- *
- * On native Wayland windows cannot be placed, so there is no shared screen space, and a
- * plain dock area only drags within its window. [TaoDockArea] adds the platform
- * drag-and-drop path that carries drags between windows there.
+ * conversion for cross-window drags, and finding the window a drop lands in. Internal:
+ * [TaoDockArea] calls it, and is the only way in, since a plain dock area on native Wayland
+ * would silently lose its cross-window drags.
  */
 @Composable
-public fun NucleusDecoratedWindowScope.registerTaoDockingWindow(
+internal fun NucleusDecoratedWindowScope.registerTaoDockingWindow(
     state: DockState,
     windowId: WindowId = WindowId.MAIN,
 ) {

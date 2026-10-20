@@ -1021,6 +1021,10 @@ public final class com/seanproctor/docking/spi/TabStripModel {
 	public final fun getTrailingActions ()Lkotlin/jvm/functions/Function2;
 }
 
+public final class com/seanproctor/docking/spi/WindowBoundsSyncKt {
+	public static final fun SyncDockWindowBounds-dzxZyEo (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;Landroidx/compose/ui/window/WindowState;Landroidx/compose/runtime/Composer;I)V
+}
+
 public final class com/seanproctor/docking/state/DockState {
 	public static final field $stable I
 	public fun <init> ()V

@@ -75,7 +75,12 @@ private class TaoTransferHandover(
             begin = {
                 // The platform session starts here, from the press; the core drag starts with it,
                 // at the last position the gesture saw.
-                if (grip.begin(gesture.lastPosition ?: Offset.Zero)) DockTransferDrag(state, grip) else null
+                if (grip.begin(gesture.lastPosition ?: Offset.Zero)) {
+                    taoIntegration(state).transferDropWindow = null
+                    DockTransferDrag(state, grip)
+                } else {
+                    null
+                }
             },
             gesture = gesture,
         )
@@ -86,7 +91,7 @@ private class TaoTransferHandover(
  * What the grip does before the platform session takes the gesture: a tab reorders within
  * its strip, everything else hands over as soon as the touch slop is passed.
  */
-private class GripGesture(
+internal class GripGesture(
     private val grip: DockDragGrip,
 ) : TransferDragGesture {
     var lastPosition: Offset? = null
@@ -106,8 +111,11 @@ private class GripGesture(
     }
 }
 
+/** The drag icon's title card: a header-sized strip, whatever the size of what is dragged. */
+internal val GhostCardSizePx = Size(240f, 48f)
+
 /** The platform session of one docking drag, as Nucleus's transfer drag carries it. */
-private class DockTransferDrag(
+internal class DockTransferDrag(
     private val state: DockState,
     grip: DockDragGrip,
 ) : TransferDrag {
@@ -115,7 +123,12 @@ private class DockTransferDrag(
 
     override val title: String = grip.title
 
-    override val ghostSizePx: Size = bounds?.size?.takeIf { it.width > 0f && it.height > 0f } ?: Size(240f, 48f)
+    // Only the card: a picture of the source comes from ghostSource, which Nucleus reduces
+    // itself. A card the size of a whole panel would hide the zones it is aimed at.
+    override val ghostSizePx: Size =
+        bounds?.size?.takeIf { it.width > 0f && it.height > 0f }?.let {
+            Size(minOf(it.width, GhostCardSizePx.width), minOf(it.height, GhostCardSizePx.height))
+        } ?: GhostCardSizePx
 
     override val ghostSource: TransferGhostSource =
         bounds?.let {
@@ -124,12 +137,22 @@ private class DockTransferDrag(
             )
         } ?: TransferGhostSource.None
 
-    /** Over. A window that took the drop has already ended the drag; otherwise it was released off them all. */
+    /**
+     * Over: the one place a drag carried by the platform is resolved. The session ends on the
+     * source after every target's `onDrop`; a window that took the drop recorded itself, with
+     * the pointer already hovered there, and a release over no window tears the payload off.
+     */
     override fun end() {
-        if (state.windowHost.isDragging) state.windowHost.dropOutside()
+        val integration = taoIntegration(state)
+        val droppedIn = integration.transferDropWindow
+        integration.transferDropWindow = null
+        val host = state.windowHost
+        if (!host.isDragging) return
+        if (droppedIn != null) host.drop() else host.dropOutside()
     }
 
     override fun cancel() {
+        taoIntegration(state).transferDropWindow = null
         if (state.windowHost.isDragging) state.windowHost.cancel()
     }
 }
@@ -145,26 +168,15 @@ private fun Modifier.transferDropTarget(
 ): Modifier {
     val target =
         remember(state, windowId) {
+            val window = DockTransferTarget(state, windowId)
             object : DragAndDropTarget {
-                override fun onEntered(event: DragAndDropEvent) = hover(event)
+                override fun onEntered(event: DragAndDropEvent) = window.hover(event.positionInWindowPx())
 
-                override fun onMoved(event: DragAndDropEvent) = hover(event)
+                override fun onMoved(event: DragAndDropEvent) = window.hover(event.positionInWindowPx())
 
-                override fun onExited(event: DragAndDropEvent) {
-                    state.windowHost.leaveWindows()
-                }
+                override fun onExited(event: DragAndDropEvent) = window.exit()
 
-                override fun onDrop(event: DragAndDropEvent): Boolean {
-                    if (!state.windowHost.isDragging) return false
-                    hover(event)
-                    state.windowHost.drop()
-                    return true
-                }
-
-                private fun hover(event: DragAndDropEvent) {
-                    val position = event.positionInWindowPx()
-                    if (position.isSpecified) state.windowHost.updateDragInWindow(position, windowId)
-                }
+                override fun onDrop(event: DragAndDropEvent): Boolean = window.drop(event.positionInWindowPx())
             }
         }
     return dragAndDropTarget(
@@ -172,4 +184,31 @@ private fun Modifier.transferDropTarget(
         shouldStartDragAndDrop = { state.windowHost.isDragging },
         target = target,
     )
+}
+
+/**
+ * One window's side of a platform-carried drag: hovers the window as the pointer moves over
+ * it, and on a drop records the window for [DockTransferDrag.end], which applies it.
+ */
+internal class DockTransferTarget(
+    private val state: DockState,
+    private val windowId: WindowId,
+) {
+    /** The pointer is at [position] in the window's pixels, or nowhere known (Unspecified). */
+    fun hover(position: Offset) {
+        if (position.isSpecified) state.windowHost.updateDragInWindow(position, windowId)
+    }
+
+    fun exit() {
+        // Leaving after taking the drop is the session winding down, not the pointer leaving.
+        if (taoIntegration(state).transferDropWindow == null) state.windowHost.leaveWindows()
+    }
+
+    /** Takes the drop at [position]; false when no docking drag is in flight. */
+    fun drop(position: Offset): Boolean {
+        if (!state.windowHost.isDragging) return false
+        hover(position)
+        taoIntegration(state).transferDropWindow = windowId
+        return true
+    }
 }
