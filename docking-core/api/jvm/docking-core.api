@@ -343,8 +343,8 @@ public final class com/seanproctor/docking/model/DockableId$Companion {
 public final class com/seanproctor/docking/model/DockableOptions {
 	public static final field $stable I
 	public fun <init> ()V
-	public synthetic fun <init> (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Z
 	public final fun component3 ()Z
@@ -353,8 +353,9 @@ public final class com/seanproctor/docking/model/DockableOptions {
 	public final fun component6 ()Z
 	public final fun component7 ()Lcom/seanproctor/docking/model/TabPreference;
 	public final fun component8-8CBDTOM ()Ljava/lang/String;
-	public final fun copy-8C5-cuI (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;)Lcom/seanproctor/docking/model/DockableOptions;
-	public static synthetic fun copy-8C5-cuI$default (Lcom/seanproctor/docking/model/DockableOptions;Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;ILjava/lang/Object;)Lcom/seanproctor/docking/model/DockableOptions;
+	public final fun component9-MYxV2XQ ()J
+	public final fun copy-2ZLaRfY (Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;J)Lcom/seanproctor/docking/model/DockableOptions;
+	public static synthetic fun copy-2ZLaRfY$default (Lcom/seanproctor/docking/model/DockableOptions;Ljava/lang/String;ZZZLcom/seanproctor/docking/model/DockingStyle;ZLcom/seanproctor/docking/model/TabPreference;Ljava/lang/String;JILjava/lang/Object;)Lcom/seanproctor/docking/model/DockableOptions;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAnchor-8CBDTOM ()Ljava/lang/String;
 	public final fun getClosable ()Z
@@ -362,6 +363,7 @@ public final class com/seanproctor/docking/model/DockableOptions {
 	public final fun getFloatable ()Z
 	public final fun getLimitedToWindow ()Z
 	public final fun getMaximizable ()Z
+	public final fun getMinSize-MYxV2XQ ()J
 	public final fun getTabPreference ()Lcom/seanproctor/docking/model/TabPreference;
 	public final fun getType ()Ljava/lang/String;
 	public fun hashCode ()I
@@ -1279,13 +1281,14 @@ public final class com/seanproctor/docking/state/DockingEvent$WindowOpened : com
 public final class com/seanproctor/docking/state/DockingSettings {
 	public static final field $stable I
 	public fun <init> ()V
-	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getAlwaysDisplayTabs ()Z
 	public final fun getCollapsedAnchorThickness-D9Ej5fM ()F
 	public final fun getCollapsesEmptyAnchors ()Z
 	public final fun getDefaultTabPreference ()Lcom/seanproctor/docking/model/TabPreference;
 	public final fun getEmptyAnchorVisibility ()Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
+	public final fun getMinPaneSize-MYxV2XQ ()J
 }
 
 public final class com/seanproctor/docking/state/EmptyAnchorVisibility : java/lang/Enum {

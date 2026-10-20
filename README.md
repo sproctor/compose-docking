@@ -145,7 +145,7 @@ OS-decorated, or with a frame of your own.
   `show`, … Observe with `snapshotFlow { state.layout }` or the
   `state.events` flow.
 - **Dockables** are declared once with reactive `title`/`icon` lambdas, per-dockable
-  `DockableOptions` (closable, floatable, docking style, anchor, …), optional
+  `DockableOptions` (closable, floatable, docking style, anchor, minimum size, …), optional
   `saveState`/`restoreState` for persisted per-panel state, and the content composable.
   Content keeps all internal state when re-docked within a window; hoist what must
   survive a move *between windows* into `rememberSaveable`.
@@ -160,6 +160,12 @@ OS-decorated, or with a frame of your own.
   still takes a drop, and add `emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging`
   to hide the strip entirely until a drag starts - an empty area then costs nothing at all
   until there is something to drop into it.
+- **Minimum sizes** stop a divider before a pane gets too small to use: each dockable can
+  set `DockableOptions(minSize = DpSize(240.dp, Dp.Unspecified))`, and any axis it leaves
+  unspecified falls back to `DockingSettings.minPaneSize` (48dp by default). A tab group
+  honours the largest minimum among its tabs. When the window is too small for every
+  minimum, panes are squeezed in proportion to them, and the saved split proportions are
+  left untouched so the layout comes back as the window grows.
 - **Persistence** is JSON (`kotlinx.serialization`) with a version field and migration
   hooks; unknown dockables in a saved layout are kept as placeholders and fill in when
   registered (or are created on demand via a `DockableResolver`). Named layout snapshots

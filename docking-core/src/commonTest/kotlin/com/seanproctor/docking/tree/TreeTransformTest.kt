@@ -102,7 +102,7 @@ class DockAtRootTest {
         val c = ctx()
         val root = c.dockAtRoot(null, A, DockRegion.Center)
         val split = assertIs<DockNode.Split>(c.dockAtRoot(root, B, DockRegion.West, 0.0f))
-        assertEquals(0.05f, split.proportion)
+        assertEquals(0f, split.proportion)
     }
 }
 

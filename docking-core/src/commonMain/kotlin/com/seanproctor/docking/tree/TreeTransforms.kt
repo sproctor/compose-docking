@@ -155,7 +155,7 @@ internal fun TreeContext.splitWithNode(
         },
         first = if (newIsFirst) newContent else existing,
         second = if (newIsFirst) existing else newContent,
-        proportion = (if (newIsFirst) proportion else 1f - proportion).coerceIn(0.05f, 0.95f),
+        proportion = (if (newIsFirst) proportion else 1f - proportion).coerceIn(0f, 1f),
     )
 }
 
@@ -304,7 +304,7 @@ internal fun setSplitProportion(root: DockNode, splitNodeId: NodeId, proportion:
         is DockNode.Leaf, is DockNode.Anchor, is DockNode.Tabs -> root
         is DockNode.Split ->
             if (root.id == splitNodeId) {
-                root.copy(proportion = proportion.coerceIn(0.05f, 0.95f))
+                root.copy(proportion = proportion.coerceIn(0f, 1f))
             } else {
                 val first = setSplitProportion(root.first, splitNodeId, proportion)
                 if (first != root.first) {

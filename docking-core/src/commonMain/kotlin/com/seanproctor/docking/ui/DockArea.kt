@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockNode
@@ -58,6 +59,7 @@ import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Thickness of a split divider: its hit area, and the room a renderer has to draw a drag
@@ -196,18 +198,6 @@ private fun DockAreaScope.RenderAnchor(
 }
 
 /**
- * True when [node] holds no dockables at all - an anchor's placeholder, or a split of
- * nothing but those. Collapsing is a property of the whole subtree, not of one node: a
- * split whose two sides have both emptied out is itself an empty area, and it is that
- * split's own parent that gives the space back.
- */
-private fun isEmptyArea(node: DockNode): Boolean = when (node) {
-    is DockNode.Anchor -> true
-    is DockNode.Split -> isEmptyArea(node.first) && isEmptyArea(node.second)
-    is DockNode.Leaf, is DockNode.Tabs -> false
-}
-
-/**
  * The fixed thickness an empty area takes along its split's axis, or null when empty areas
  * are left at their proportional size. Zero while one is hidden until a drag.
  *
@@ -224,6 +214,20 @@ private fun DockAreaScope.emptyAreaThickness(): Dp? {
         return 0.dp
     }
     return settings.collapsedAnchorThickness.takeIf { settings.collapsesEmptyAnchors }
+}
+
+/**
+ * The smallest [node] may be laid out at - see [minSize]. An empty area needs nothing of its
+ * own while it is drawn as a strip (or not at all), since the strip's size is fixed, and the
+ * default pane minimum while it shares out its split by proportion like any other pane.
+ */
+private fun DockAreaScope.minSizeOf(node: DockNode): DpSize {
+    val settings = state.settings
+    return node.minSize(
+        paneMin = { state.registry.optionsOf(it).resolvedMinSize(settings.minPaneSize) },
+        emptyMin = if (emptyAreaThickness() != null) DpSize.Zero else settings.minPaneSize,
+        divider = DividerThickness,
+    )
 }
 
 @Composable
@@ -451,21 +455,42 @@ internal fun DockAreaScope.RenderSplit(
     val horizontal = node.orientation == SplitOrientation.Horizontal
     val renderer = LocalDockingRenderer.current
 
+    // Neither side may be dragged, or squeezed by the window, below what its panes need.
+    val firstMin = minSizeOf(node.first)
+    val secondMin = minSizeOf(node.second)
+    val currentMinimums by rememberUpdatedState(firstMin to secondMin)
+
     val dividerDrag = Modifier
         .pointerInput(node.id) {
+            fun DpSize.along(orientation: SplitOrientation): Float =
+                (if (orientation == SplitOrientation.Horizontal) width else height).toPx()
+
+            fun total(): Float {
+                val thicknessPx = DividerThickness.toPx()
+                return if (currentNode.orientation == SplitOrientation.Horizontal) {
+                    containerSize.width - thicknessPx
+                } else {
+                    containerSize.height - thicknessPx
+                }
+            }
+
+            fun clampToMinimums(proportion: Float): Float {
+                val (first, second) = currentMinimums
+                val orientation = currentNode.orientation
+                return clampProportion(proportion, total(), first.along(orientation), second.along(orientation))
+            }
+
             detectDragGestures(
                 onDragStart = {
-                    dragProportion.value = currentNode.proportion
+                    // From where the divider is drawn, not the stored proportion: one the
+                    // minimums override would otherwise leave a dead zone at the start of
+                    // the drag, the pointer moving and the divider not, until it caught up.
+                    dragProportion.value = clampToMinimums(currentNode.proportion)
                     dividerDragging = true
                 },
                 onDrag = { change, amount ->
                     change.consume()
-                    val thicknessPx = DividerThickness.toPx()
-                    val total = if (currentNode.orientation == SplitOrientation.Horizontal) {
-                        containerSize.width - thicknessPx
-                    } else {
-                        containerSize.height - thicknessPx
-                    }
+                    val total = total()
                     if (total > 0f) {
                         val delta = if (currentNode.orientation == SplitOrientation.Horizontal) {
                             amount.x
@@ -473,8 +498,7 @@ internal fun DockAreaScope.RenderSplit(
                             amount.y
                         }
                         dragProportion.value =
-                            ((dragProportion.value ?: currentNode.proportion) + delta / total)
-                                .coerceIn(0.05f, 0.95f)
+                            clampToMinimums((dragProportion.value ?: currentNode.proportion) + delta / total)
                     }
                 },
                 onDragEnd = {
@@ -545,8 +569,11 @@ internal fun DockAreaScope.RenderSplit(
     ) { measurables, constraints ->
         require(measurables.size == 3) { "split expects exactly [first, divider, second]" }
         // Read here, not in composition: this is the whole point of the drag being cheap.
-        val proportion = (dragProportion.value ?: node.proportion).coerceIn(0.05f, 0.95f)
+        val proportion = dragProportion.value ?: node.proportion
         val thickness = if (dividerVisible) DividerThickness.roundToPx() else 0
+        fun shared(available: Int, firstMin: Dp, secondMin: Dp): Int =
+            (available * clampProportion(proportion, available.toFloat(), firstMin.toPx(), secondMin.toPx()))
+                .roundToInt()
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         // Never let a strip crowd out its neighbour on a small window: half the axis is
@@ -557,7 +584,7 @@ internal fun DockAreaScope.RenderSplit(
             val firstWidth = when {
                 firstThickness != null -> strip(available)
                 secondThickness != null -> available - strip(available)
-                else -> (available * proportion).toInt()
+                else -> shared(available, firstMin.width, secondMin.width)
             }
             val secondWidth = available - firstWidth
             val firstPlaceable = measurables[0].measure(Constraints.fixed(firstWidth, height))
@@ -577,7 +604,7 @@ internal fun DockAreaScope.RenderSplit(
             val firstHeight = when {
                 firstThickness != null -> strip(available)
                 secondThickness != null -> available - strip(available)
-                else -> (available * proportion).toInt()
+                else -> shared(available, firstMin.height, secondMin.height)
             }
             val secondHeight = available - firstHeight
             val firstPlaceable = measurables[0].measure(Constraints.fixed(width, firstHeight))

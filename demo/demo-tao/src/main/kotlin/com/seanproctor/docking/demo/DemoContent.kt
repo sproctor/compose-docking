@@ -40,6 +40,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import com.seanproctor.docking.ui.LocalDockCapabilities
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
@@ -395,6 +397,9 @@ fun DockState.demoDockables() {
                 // as a strip (see collapsedAnchorThickness in the demo's DockingSettings)
                 // rather than collapsing it - drag Three back and the column reopens.
                 anchor = if (id == "three") DemoToolsAnchor else null,
+                // Panel Three's column stops at 160dp however far its divider is dragged;
+                // the rest fall back to DockingSettings.minPaneSize.
+                minSize = if (id == "three") DpSize(160.dp, Dp.Unspecified) else DpSize.Unspecified,
             ),
             headerBackground = titleColor?.let { { it } },
             headerForeground = titleColor?.let { { Color.Black } },

@@ -741,7 +741,7 @@ final class com.seanproctor.docking.model/DockWindow { // com.seanproctor.dockin
 }
 
 final class com.seanproctor.docking.model/DockableOptions { // com.seanproctor.docking.model/DockableOptions|null[0]
-    constructor <init>(kotlin/String? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/DockingStyle = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/TabPreference = ..., com.seanproctor.docking.model/AnchorId? = ...) // com.seanproctor.docking.model/DockableOptions.<init>|<init>(kotlin.String?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;com.seanproctor.docking.model.DockingStyle;kotlin.Boolean;com.seanproctor.docking.model.TabPreference;com.seanproctor.docking.model.AnchorId?){}[0]
+    constructor <init>(kotlin/String? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/DockingStyle = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/TabPreference = ..., com.seanproctor.docking.model/AnchorId? = ..., androidx.compose.ui.unit/DpSize = ...) // com.seanproctor.docking.model/DockableOptions.<init>|<init>(kotlin.String?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;com.seanproctor.docking.model.DockingStyle;kotlin.Boolean;com.seanproctor.docking.model.TabPreference;com.seanproctor.docking.model.AnchorId?;androidx.compose.ui.unit.DpSize){}[0]
 
     final val anchor // com.seanproctor.docking.model/DockableOptions.anchor|{}anchor[0]
         final fun <get-anchor>(): com.seanproctor.docking.model/AnchorId? // com.seanproctor.docking.model/DockableOptions.anchor.<get-anchor>|<get-anchor>(){}[0]
@@ -755,6 +755,8 @@ final class com.seanproctor.docking.model/DockableOptions { // com.seanproctor.d
         final fun <get-limitedToWindow>(): kotlin/Boolean // com.seanproctor.docking.model/DockableOptions.limitedToWindow.<get-limitedToWindow>|<get-limitedToWindow>(){}[0]
     final val maximizable // com.seanproctor.docking.model/DockableOptions.maximizable|{}maximizable[0]
         final fun <get-maximizable>(): kotlin/Boolean // com.seanproctor.docking.model/DockableOptions.maximizable.<get-maximizable>|<get-maximizable>(){}[0]
+    final val minSize // com.seanproctor.docking.model/DockableOptions.minSize|{}minSize[0]
+        final fun <get-minSize>(): androidx.compose.ui.unit/DpSize // com.seanproctor.docking.model/DockableOptions.minSize.<get-minSize>|<get-minSize>(){}[0]
     final val tabPreference // com.seanproctor.docking.model/DockableOptions.tabPreference|{}tabPreference[0]
         final fun <get-tabPreference>(): com.seanproctor.docking.model/TabPreference // com.seanproctor.docking.model/DockableOptions.tabPreference.<get-tabPreference>|<get-tabPreference>(){}[0]
     final val type // com.seanproctor.docking.model/DockableOptions.type|{}type[0]
@@ -768,7 +770,8 @@ final class com.seanproctor.docking.model/DockableOptions { // com.seanproctor.d
     final fun component6(): kotlin/Boolean // com.seanproctor.docking.model/DockableOptions.component6|component6(){}[0]
     final fun component7(): com.seanproctor.docking.model/TabPreference // com.seanproctor.docking.model/DockableOptions.component7|component7(){}[0]
     final fun component8(): com.seanproctor.docking.model/AnchorId? // com.seanproctor.docking.model/DockableOptions.component8|component8(){}[0]
-    final fun copy(kotlin/String? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/DockingStyle = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/TabPreference = ..., com.seanproctor.docking.model/AnchorId? = ...): com.seanproctor.docking.model/DockableOptions // com.seanproctor.docking.model/DockableOptions.copy|copy(kotlin.String?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;com.seanproctor.docking.model.DockingStyle;kotlin.Boolean;com.seanproctor.docking.model.TabPreference;com.seanproctor.docking.model.AnchorId?){}[0]
+    final fun component9(): androidx.compose.ui.unit/DpSize // com.seanproctor.docking.model/DockableOptions.component9|component9(){}[0]
+    final fun copy(kotlin/String? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/DockingStyle = ..., kotlin/Boolean = ..., com.seanproctor.docking.model/TabPreference = ..., com.seanproctor.docking.model/AnchorId? = ..., androidx.compose.ui.unit/DpSize = ...): com.seanproctor.docking.model/DockableOptions // com.seanproctor.docking.model/DockableOptions.copy|copy(kotlin.String?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;com.seanproctor.docking.model.DockingStyle;kotlin.Boolean;com.seanproctor.docking.model.TabPreference;com.seanproctor.docking.model.AnchorId?;androidx.compose.ui.unit.DpSize){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.seanproctor.docking.model/DockableOptions.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.seanproctor.docking.model/DockableOptions.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.seanproctor.docking.model/DockableOptions.toString|toString(){}[0]
@@ -1208,7 +1211,7 @@ final class com.seanproctor.docking.state/DockableSpec { // com.seanproctor.dock
 }
 
 final class com.seanproctor.docking.state/DockingSettings { // com.seanproctor.docking.state/DockingSettings|null[0]
-    constructor <init>(com.seanproctor.docking.model/TabPreference = ..., androidx.compose.ui.unit/Dp = ..., com.seanproctor.docking.state/EmptyAnchorVisibility = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference;androidx.compose.ui.unit.Dp;com.seanproctor.docking.state.EmptyAnchorVisibility){}[0]
+    constructor <init>(com.seanproctor.docking.model/TabPreference = ..., androidx.compose.ui.unit/Dp = ..., com.seanproctor.docking.state/EmptyAnchorVisibility = ..., androidx.compose.ui.unit/DpSize = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference;androidx.compose.ui.unit.Dp;com.seanproctor.docking.state.EmptyAnchorVisibility;androidx.compose.ui.unit.DpSize){}[0]
 
     final val alwaysDisplayTabs // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs|{}alwaysDisplayTabs[0]
         final fun <get-alwaysDisplayTabs>(): kotlin/Boolean // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs.<get-alwaysDisplayTabs>|<get-alwaysDisplayTabs>(){}[0]
@@ -1220,6 +1223,8 @@ final class com.seanproctor.docking.state/DockingSettings { // com.seanproctor.d
         final fun <get-defaultTabPreference>(): com.seanproctor.docking.model/TabPreference // com.seanproctor.docking.state/DockingSettings.defaultTabPreference.<get-defaultTabPreference>|<get-defaultTabPreference>(){}[0]
     final val emptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility|{}emptyAnchorVisibility[0]
         final fun <get-emptyAnchorVisibility>(): com.seanproctor.docking.state/EmptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility.<get-emptyAnchorVisibility>|<get-emptyAnchorVisibility>(){}[0]
+    final val minPaneSize // com.seanproctor.docking.state/DockingSettings.minPaneSize|{}minPaneSize[0]
+        final fun <get-minPaneSize>(): androidx.compose.ui.unit/DpSize // com.seanproctor.docking.state/DockingSettings.minPaneSize.<get-minPaneSize>|<get-minPaneSize>(){}[0]
 }
 
 final class com.seanproctor.docking.ui/DockBoundsRegistry // com.seanproctor.docking.ui/DockBoundsRegistry|null[0]
