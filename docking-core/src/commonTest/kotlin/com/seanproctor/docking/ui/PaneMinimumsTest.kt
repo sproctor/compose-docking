@@ -57,6 +57,16 @@ class PaneMinimumsTest {
     }
 
     @Test
+    fun oneWalkRecordsEveryNodesMinimum() {
+        val inner = DockNode.Split(NodeId("in"), SplitOrientation.Vertical, leaf(A), leaf(C))
+        val outer = DockNode.Split(NodeId("out"), SplitOrientation.Horizontal, inner, leaf(B))
+        val sizes = outer.minSizes(paneMin = { mins.getValue(it) }, emptyMin = DpSize.Zero, divider = 8.dp)
+        assertEquals(DpSize(308.dp, 138.dp), sizes[NodeId("out")])
+        assertEquals(DpSize(100.dp, 138.dp), sizes[NodeId("in")])
+        assertEquals(DpSize(200.dp, 30.dp), sizes[NodeId("leaf-b")])
+    }
+
+    @Test
     fun emptyAreasTakeTheEmptyMinimumWholeRatherThanSumming() {
         val anchor = DockNode.Anchor(NodeId("x"), AnchorId("x"))
         val emptySplit = DockNode.Split(

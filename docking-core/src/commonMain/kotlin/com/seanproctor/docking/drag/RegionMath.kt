@@ -43,11 +43,18 @@ public fun resolveRegion(
     }
 }
 
-/** The drop-preview rect for docking at [region] of [bounds]: half toward the edge, full for Center. */
-internal fun previewRectFor(bounds: Rect, region: DockRegion): Rect = when (region) {
+/**
+ * The drop-preview rect for docking at [region] of [bounds]: [fraction] of it toward the
+ * edge (half by default), the whole of it for Center.
+ */
+internal fun previewRectFor(
+    bounds: Rect,
+    region: DockRegion,
+    fraction: Float = DROP_PREVIEW_FRACTION,
+): Rect = when (region) {
     DockRegion.Center -> bounds
-    DockRegion.West -> Rect(bounds.left, bounds.top, bounds.left + bounds.width * DROP_PREVIEW_FRACTION, bounds.bottom)
-    DockRegion.East -> Rect(bounds.right - bounds.width * DROP_PREVIEW_FRACTION, bounds.top, bounds.right, bounds.bottom)
-    DockRegion.North -> Rect(bounds.left, bounds.top, bounds.right, bounds.top + bounds.height * DROP_PREVIEW_FRACTION)
-    DockRegion.South -> Rect(bounds.left, bounds.bottom - bounds.height * DROP_PREVIEW_FRACTION, bounds.right, bounds.bottom)
+    DockRegion.West -> Rect(bounds.left, bounds.top, bounds.left + bounds.width * fraction, bounds.bottom)
+    DockRegion.East -> Rect(bounds.right - bounds.width * fraction, bounds.top, bounds.right, bounds.bottom)
+    DockRegion.North -> Rect(bounds.left, bounds.top, bounds.right, bounds.top + bounds.height * fraction)
+    DockRegion.South -> Rect(bounds.left, bounds.bottom - bounds.height * fraction, bounds.right, bounds.bottom)
 }

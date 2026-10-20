@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.max
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
+import com.seanproctor.docking.model.NodeId
 import com.seanproctor.docking.model.SplitOrientation
 
 /**
@@ -31,38 +32,64 @@ internal fun DockableOptions.resolvedMinSize(default: DpSize): DpSize = DpSize(
 )
 
 /**
- * The smallest size [node] can be laid out at without squeezing any pane in it below its
+ * The smallest size this node can be laid out at without squeezing any pane in it below its
  * minimum.
  *
  * A tab group needs room for the largest of its tabs, not just the selected one, so
  * switching tabs never moves a divider. A split adds its sides up along its own axis -
  * plus the divider between them - and takes the larger of the two across it. An empty
  * area needs [emptyMin]: the default pane minimum while it holds its slot at full size, and
- * nothing when it collapses to a strip, since a strip's size is fixed rather than shared out.
+ * the strip's thickness when it collapses to one - see [DockAreaScope.minimums].
  */
 internal fun DockNode.minSize(
     paneMin: (DockableId) -> DpSize,
     emptyMin: DpSize,
     divider: Dp,
-): DpSize = when (this) {
-    is DockNode.Leaf -> paneMin(dockableId)
-    is DockNode.Tabs -> tabs.fold(DpSize.Zero) { acc, tab ->
-        val min = paneMin(tab.dockableId)
-        DpSize(max(acc.width, min.width), max(acc.height, min.height))
-    }
-    is DockNode.Anchor -> emptyMin
-    is DockNode.Split -> if (isEmptyArea(this)) {
-        emptyMin
-    } else {
-        val a = first.minSize(paneMin, emptyMin, divider)
-        val b = second.minSize(paneMin, emptyMin, divider)
-        if (orientation == SplitOrientation.Horizontal) {
-            DpSize(a.width + divider + b.width, max(a.height, b.height))
-        } else {
-            DpSize(max(a.width, b.width), a.height + divider + b.height)
+): DpSize = minSizes(paneMin, emptyMin, divider).getValue(id)
+
+/**
+ * [minSize] of this node and of every split, tab group, leaf and anchor below it, keyed by
+ * node, worked out in one walk of the tree.
+ */
+internal fun DockNode.minSizes(
+    paneMin: (DockableId) -> DpSize,
+    emptyMin: DpSize,
+    divider: Dp,
+): Map<NodeId, DpSize> {
+    val sizes = HashMap<NodeId, DpSize>()
+    // The empty areas seen so far, so a split learns it is one from its sides rather than by
+    // walking its subtree again - see [isEmptyArea].
+    val empty = HashSet<NodeId>()
+    fun visit(node: DockNode): DpSize {
+        val size = when (node) {
+            is DockNode.Leaf -> paneMin(node.dockableId)
+            is DockNode.Tabs -> node.tabs.fold(DpSize.Zero) { acc, tab -> acc.coerceAtLeast(paneMin(tab.dockableId)) }
+            is DockNode.Anchor -> emptyMin.also { empty += node.id }
+            is DockNode.Split -> {
+                val a = visit(node.first)
+                val b = visit(node.second)
+                when {
+                    node.first.id in empty && node.second.id in empty -> emptyMin.also { empty += node.id }
+                    node.orientation == SplitOrientation.Horizontal ->
+                        DpSize(a.width + divider + b.width, max(a.height, b.height))
+                    else -> DpSize(max(a.width, b.width), a.height + divider + b.height)
+                }
+            }
         }
+        sizes[node.id] = size
+        return size
     }
+    visit(this)
+    return sizes
 }
+
+/** The larger of this and [other] on each axis. */
+internal fun DpSize.coerceAtLeast(other: DpSize): DpSize =
+    DpSize(max(width, other.width), max(height, other.height))
+
+/** This size's extent along a split of [orientation]: its width side by side, height stacked. */
+internal fun DpSize.along(orientation: SplitOrientation): Dp =
+    if (orientation == SplitOrientation.Horizontal) width else height
 
 /**
  * Where a split's divider sits: [proportion], moved just far enough that the first side keeps

@@ -15,11 +15,18 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.drag.DragSession
 import com.seanproctor.docking.drag.DropTarget
+import com.seanproctor.docking.drag.DROP_PREVIEW_FRACTION
 import com.seanproctor.docking.drag.previewRectFor
+import com.seanproctor.docking.model.DockRegion
+import com.seanproctor.docking.model.NodeId
+import com.seanproctor.docking.model.SplitOrientation
+import com.seanproctor.docking.tree.findLeaf
+import com.seanproctor.docking.tree.findTabsContaining
 import com.seanproctor.docking.spi.DropOverlayModel
 import com.seanproctor.docking.spi.HandleModel
 import com.seanproctor.docking.spi.LocalDockingRenderer
@@ -94,15 +101,20 @@ private fun DockAreaScope.overlayRectFor(session: DragSession): Pair<Rect, Overl
     return when (val target = session.target) {
         is DropTarget.Root -> {
             val rect = bounds.rootBounds
-            Pair(previewRectFor(rect, target.region), OverlayKind.Area)
+            val split = state.layout.window(target.windowId)?.root?.id
+            Pair(dropPreviewRect(rect, target.region, split, session), OverlayKind.Area)
         }
         is DropTarget.OnDockable -> {
             val rect = bounds.boundsOf(target.dockableId) ?: return null
-            Pair(previewRectFor(rect, target.region), OverlayKind.Area)
+            // An edge drop onto a tab splits the whole group, so it is the group that has
+            // to keep its minimum beside the new pane.
+            val root = state.layout.window(windowId)?.root
+            val split = (root?.findTabsContaining(target.dockableId) ?: root?.findLeaf(target.dockableId))?.id
+            Pair(dropPreviewRect(rect, target.region, split, session), OverlayKind.Area)
         }
         is DropTarget.OnNode -> {
             val rect = bounds.boundsOfNode(target.nodeId) ?: return null
-            Pair(previewRectFor(rect, target.region), OverlayKind.Area)
+            Pair(dropPreviewRect(rect, target.region, target.nodeId, session), OverlayKind.Area)
         }
         is DropTarget.TabInsert -> {
             val strip = bounds.tabStripRects[target.nodeId] ?: return null
@@ -120,6 +132,35 @@ private fun DockAreaScope.overlayRectFor(session: DragSession): Pair<Rect, Overl
         }
         is DropTarget.NewWindow, DropTarget.None -> null
     }
+}
+
+/**
+ * The drop preview for docking the session's payload at [region] of [rect], which splits
+ * node [split]: the share the new pane will actually get once the split's minimums are
+ * applied, rather than a flat half that the layout would then overrule on release.
+ */
+private fun DockAreaScope.dropPreviewRect(
+    rect: Rect,
+    region: DockRegion,
+    split: NodeId?,
+    session: DragSession,
+): Rect {
+    if (region == DockRegion.Center) return rect
+    val orientation = if (region == DockRegion.East || region == DockRegion.West) {
+        SplitOrientation.Horizontal
+    } else {
+        SplitOrientation.Vertical
+    }
+    val axis = if (orientation == SplitOrientation.Horizontal) rect.width else rect.height
+    val available = axis - DividerThickness.value * density
+    if (available <= 0f) return previewRectFor(rect, region)
+    // The payload docks as one group, so it needs its largest member's minimum.
+    val newMin = session.payload.all
+        .fold(DpSize.Zero) { acc, id -> acc.coerceAtLeast(paneMinOf(id)) }
+        .along(orientation).value * density
+    val existingMin = (split?.let { minSizeOf(it) } ?: DpSize.Zero).along(orientation).value * density
+    val share = clampProportion(DROP_PREVIEW_FRACTION, available, newMin, existingMin)
+    return previewRectFor(rect, region, fraction = available * share / axis)
 }
 
 /**

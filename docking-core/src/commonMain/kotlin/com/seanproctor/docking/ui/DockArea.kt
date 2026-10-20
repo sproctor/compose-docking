@@ -35,7 +35,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.DockNode
@@ -214,20 +213,6 @@ private fun DockAreaScope.emptyAreaThickness(): Dp? {
         return 0.dp
     }
     return settings.collapsedAnchorThickness.takeIf { settings.collapsesEmptyAnchors }
-}
-
-/**
- * The smallest [node] may be laid out at - see [minSize]. An empty area needs nothing of its
- * own while it is drawn as a strip (or not at all), since the strip's size is fixed, and the
- * default pane minimum while it shares out its split by proportion like any other pane.
- */
-private fun DockAreaScope.minSizeOf(node: DockNode): DpSize {
-    val settings = state.settings
-    return node.minSize(
-        paneMin = { state.registry.optionsOf(it).resolvedMinSize(settings.minPaneSize) },
-        emptyMin = if (emptyAreaThickness() != null) DpSize.Zero else settings.minPaneSize,
-        divider = DividerThickness,
-    )
 }
 
 @Composable
@@ -455,15 +440,12 @@ internal fun DockAreaScope.RenderSplit(
     val horizontal = node.orientation == SplitOrientation.Horizontal
     val renderer = LocalDockingRenderer.current
 
-    // Neither side may be dragged, or squeezed by the window, below what its panes need.
-    val firstMin = minSizeOf(node.first)
-    val secondMin = minSizeOf(node.second)
-    val currentMinimums by rememberUpdatedState(firstMin to secondMin)
-
+    // Neither side may be dragged, or squeezed by the window, below what its panes need. The
+    // minimums are read where they are used - the drag handler and the measure lambda - so a
+    // change to them is a re-measure here, not a recomposition of everything in the split.
     val dividerDrag = Modifier
         .pointerInput(node.id) {
-            fun DpSize.along(orientation: SplitOrientation): Float =
-                (if (orientation == SplitOrientation.Horizontal) width else height).toPx()
+            fun minAlong(side: DockNode): Float = minSizeOf(side.id).along(currentNode.orientation).toPx()
 
             fun total(): Float {
                 val thicknessPx = DividerThickness.toPx()
@@ -474,11 +456,13 @@ internal fun DockAreaScope.RenderSplit(
                 }
             }
 
-            fun clampToMinimums(proportion: Float): Float {
-                val (first, second) = currentMinimums
-                val orientation = currentNode.orientation
-                return clampProportion(proportion, total(), first.along(orientation), second.along(orientation))
-            }
+            fun clampToMinimums(proportion: Float): Float =
+                clampProportion(proportion, total(), minAlong(currentNode.first), minAlong(currentNode.second))
+
+            // Too small for both sides' minimums, the divider is pinned at their ratio wherever
+            // the pointer goes - committing that would overwrite the user's proportion with one
+            // they never chose, and it would stick once the window grew back.
+            fun squeezed(): Boolean = minAlong(currentNode.first) + minAlong(currentNode.second) >= total()
 
             detectDragGestures(
                 onDragStart = {
@@ -502,7 +486,7 @@ internal fun DockAreaScope.RenderSplit(
                     }
                 },
                 onDragEnd = {
-                    dragProportion.value?.let { state.setSplitProportion(currentNode.id, it) }
+                    if (!squeezed()) dragProportion.value?.let { state.setSplitProportion(currentNode.id, it) }
                     dragProportion.value = null
                     dividerDragging = false
                 },
@@ -571,9 +555,11 @@ internal fun DockAreaScope.RenderSplit(
         // Read here, not in composition: this is the whole point of the drag being cheap.
         val proportion = dragProportion.value ?: node.proportion
         val thickness = if (dividerVisible) DividerThickness.roundToPx() else 0
-        fun shared(available: Int, firstMin: Dp, secondMin: Dp): Int =
-            (available * clampProportion(proportion, available.toFloat(), firstMin.toPx(), secondMin.toPx()))
-                .roundToInt()
+        fun shared(available: Int): Int {
+            val firstMin = minSizeOf(node.first.id).along(node.orientation).toPx()
+            val secondMin = minSizeOf(node.second.id).along(node.orientation).toPx()
+            return (available * clampProportion(proportion, available.toFloat(), firstMin, secondMin)).roundToInt()
+        }
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         // Never let a strip crowd out its neighbour on a small window: half the axis is
@@ -584,7 +570,7 @@ internal fun DockAreaScope.RenderSplit(
             val firstWidth = when {
                 firstThickness != null -> strip(available)
                 secondThickness != null -> available - strip(available)
-                else -> shared(available, firstMin.width, secondMin.width)
+                else -> shared(available)
             }
             val secondWidth = available - firstWidth
             val firstPlaceable = measurables[0].measure(Constraints.fixed(firstWidth, height))
@@ -604,7 +590,7 @@ internal fun DockAreaScope.RenderSplit(
             val firstHeight = when {
                 firstThickness != null -> strip(available)
                 secondThickness != null -> available - strip(available)
-                else -> shared(available, firstMin.height, secondMin.height)
+                else -> shared(available)
             }
             val secondHeight = available - firstHeight
             val firstPlaceable = measurables[0].measure(Constraints.fixed(width, firstHeight))
