@@ -204,11 +204,8 @@ private fun Modifier.windowDragToDock(
             val down = awaitFirstDown()
             state.activeDockable = dockableId
             val origin = down.position
-            val integration = taoIntegration(state)
             var dragging = false
-            // Where the window was asked to go: reading it back from the window system would
-            // re-add drift a move still in flight already covers.
-            var requested: Offset? = null
+            var chase: WindowChase? = null
             try {
                 while (true) {
                     val event = awaitPointerEvent()
@@ -228,30 +225,55 @@ private fun Modifier.windowDragToDock(
                     }
                     if (!dragging && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         dragging = host.startWindowDrag(dockableId, windowId, change.position)
-                        requested = window.boundsOnScreen()?.let { Offset(it.x, it.y) }
+                        chase = window.screenOrigin()?.let { WindowChase(it, origin, density) }
                     }
                     if (dragging) {
                         change.consume()
-                        val drift = change.position - origin
                         val tao = window.unsafe.taoWindow
-                        val from = requested
-                        if (from != null && tao != null) {
-                            val next = from + drift / density
-                            requested = next
-                            integration.movingOrigins[windowId] = next
-                            tao.setOuterPosition(next.x.toDouble(), next.y.toDouble())
-                        }
+                        val next = chase?.next(change.position, window.screenOrigin())
+                        if (next != null && tao != null) tao.setOuterPosition(next.x.toDouble(), next.y.toDouble())
                         host.updateDrag(change.position, windowId)
                     }
                 }
             } finally {
-                integration.movingOrigins.remove(windowId)
                 // Every other way out (the pointer vanishing, the composable leaving) would
                 // leave the session open, and an open session turns away every later drag.
                 if (dragging) host.cancel()
             }
         }
     }
+
+private fun NucleusWindow.screenOrigin(): Offset? = boundsOnScreen()?.let { Offset(it.x, it.y) }
+
+/**
+ * Where to move a window dragged by a point inside it, event by event, in logical screen
+ * units. Moves land asynchronously, so the window's observed position can lag the one last
+ * asked for. Each event's local position is relative to the observed position, so the
+ * pointer's movement on screen is its local movement plus the window's observed movement
+ * since the last event. That keeps the window under the pointer whether a move is still
+ * pending or has landed, without counting one twice.
+ */
+internal class WindowChase(
+    start: Offset,
+    pressPosition: Offset,
+    private val density: Float,
+) {
+    private var requested = start
+    private var lastObserved = start
+    private var lastLocal = pressPosition
+
+    /** The pointer is at [local] in the window, which is observed at [observed] (null: unknown). */
+    fun next(
+        local: Offset,
+        observed: Offset?,
+    ): Offset {
+        val windowMoved = observed?.let { it - lastObserved } ?: Offset.Zero
+        requested += (local - lastLocal) / density + windowMoved
+        lastLocal = local
+        if (observed != null) lastObserved = observed
+        return requested
+    }
+}
 
 /** The first dockable in [this] subtree, in layout order: what a floating window is named after. */
 private fun DockNode.firstDockable(): DockableId? =

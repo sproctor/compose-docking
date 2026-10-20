@@ -31,13 +31,6 @@ internal class TaoDockingIntegration(
     val densities = HashMap<WindowId, Float>()
 
     /**
-     * Logical screen positions of windows being moved by a drag, as requested: a move takes
-     * effect asynchronously, so [NucleusWindow.boundsOnScreen] lags behind until the window
-     * system confirms it.
-     */
-    val movingOrigins = HashMap<WindowId, Offset>()
-
-    /**
      * The window that took the drop of the platform-carried drag in flight (native Wayland),
      * recorded by its drop target for the drag's end to act on.
      */
@@ -81,21 +74,19 @@ internal class TaoDockingIntegration(
     ): Rect? {
         val bounds = window.boundsOnScreen() ?: return null
         val density = densities[id] ?: 1f
-        val origin = movingOrigins[id] ?: Offset(bounds.x, bounds.y)
         return Rect(
-            origin.x * density,
-            origin.y * density,
-            (origin.x + bounds.width) * density,
-            (origin.y + bounds.height) * density,
+            bounds.x * density,
+            bounds.y * density,
+            (bounds.x + bounds.width) * density,
+            (bounds.y + bounds.height) * density,
         )
     }
 
     /** [id]'s content origin in the shared space, or null while it is not on screen. */
     fun originOf(id: WindowId): Offset? {
         val window = windows[id] ?: return null
-        val density = densities[id] ?: 1f
-        movingOrigins[id]?.let { return it * density }
         val bounds = window.boundsOnScreen() ?: return null
+        val density = densities[id] ?: 1f
         return Offset(bounds.x * density, bounds.y * density)
     }
 }

@@ -89,18 +89,6 @@ class TaoDockingIntegrationTest {
         assertEquals(true, integration.windowsPlaceable, "any window answers, not only the main one")
     }
 
-    @Test
-    fun aWindowBeingMovedIsWhereItWasAskedToGo() {
-        val integration = integration(placeable = true)
-        // The window system has not confirmed the move yet: the bounds still say (100, 100).
-        integration.add(FLOATING, FakeWindow(NucleusWindowBounds(100f, 100f, 300f, 200f)), density = 2f)
-        integration.movingOrigins[FLOATING] = Offset(140f, 120f)
-
-        assertEquals(Offset(280f, 240f), integration.originOf(FLOATING))
-        assertEquals(FLOATING, integration.resolveWindowAt(Offset(285f, 245f), exclude = null))
-        assertNull(integration.resolveWindowAt(Offset(210f, 210f), exclude = null))
-    }
-
     private fun TaoDockingIntegration.add(
         id: WindowId,
         window: NucleusWindow,
