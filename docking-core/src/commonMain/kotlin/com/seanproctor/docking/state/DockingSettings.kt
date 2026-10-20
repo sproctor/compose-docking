@@ -2,6 +2,8 @@ package com.seanproctor.docking.state
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.model.TabPreference
 
 /**
@@ -42,6 +44,15 @@ public class DockingSettings(
      * its full proportional size, which moves the layout under the pointer mid-drag.
      */
     public val emptyAnchorVisibility: EmptyAnchorVisibility = EmptyAnchorVisibility.Always,
+    /**
+     * The smallest a pane may be made by dragging a divider, for every dockable that does not
+     * set its own [com.seanproctor.docking.model.DockableOptions.minSize], and for empty
+     * anchors holding their slot at full size.
+     *
+     * Keeps a divider from being dragged until a pane disappears behind it. [DpSize.Zero]
+     * lets panes shrink to nothing.
+     */
+    public val minPaneSize: DpSize = DpSize(48.dp, 48.dp),
 ) {
     /** True when empty anchors collapse to a strip rather than filling their slot. */
     public val collapsesEmptyAnchors: Boolean

@@ -1,6 +1,7 @@
 package com.seanproctor.docking.model
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.unit.DpSize
 
 /**
  * Static docking behavior of a dockable. Everything visual or reactive (title, icon,
@@ -28,4 +29,15 @@ public data class DockableOptions(
      * window, an [DockNode.Anchor] placeholder is restored in its slot.
      */
     val anchor: AnchorId? = null,
+    /**
+     * The smallest this dockable's pane - header, tab strip and content together - may be
+     * made by dragging a divider or by the window around it shrinking. In a tab group the
+     * largest minimum of its tabs applies, whichever is selected.
+     *
+     * Either axis left [Dp.Unspecified][androidx.compose.ui.unit.Dp.Unspecified] (the
+     * default) takes [com.seanproctor.docking.state.DockingSettings.minPaneSize]'s.
+     * A window too small to hold every pane's minimum squeezes them all by the same
+     * fraction of it.
+     */
+    val minSize: DpSize = DpSize.Unspecified,
 )
