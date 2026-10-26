@@ -10,6 +10,8 @@ kotlin {
     jvmToolchain(21)
     compilerOptions {
         optIn.add("com.seanproctor.docking.spi.DockingWindowHostApi")
+        // The module's own experimental API, which it uses throughout.
+        optIn.add("com.seanproctor.docking.tao.ExperimentalDockingTaoApi")
     }
 
     // Same validation the KMP modules get from docking.kmp-library; this module is

@@ -42,6 +42,7 @@ import kotlin.math.roundToInt
  * pointer reports where it is in its own coordinates, and a release over no window tears
  * the panel off into a floating window (placed by the compositor).
  */
+@ExperimentalDockingTaoApi
 @Composable
 public fun NucleusDecoratedWindowScope.TaoDockArea(
     state: DockState,
