@@ -4,6 +4,9 @@ public final class com/seanproctor/docking/tao/DefaultTaoFloatingWindowHost : co
 	public fun FloatingWindow (Ldev/nucleusframework/application/NucleusApplicationScope;Lcom/seanproctor/docking/desktop/FloatingWindowModel;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;I)V
 }
 
+public abstract interface annotation class com/seanproctor/docking/tao/ExperimentalDockingTaoApi : java/lang/annotation/Annotation {
+}
+
 public final class com/seanproctor/docking/tao/TaoDockingIntegrationKt {
 	public static final fun nucleusWindow-0Cp-TJE (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;)Ldev/nucleusframework/application/NucleusWindow;
 	public static synthetic fun nucleusWindow-0Cp-TJE$default (Lcom/seanproctor/docking/state/DockState;Ljava/lang/String;ILjava/lang/Object;)Ldev/nucleusframework/application/NucleusWindow;

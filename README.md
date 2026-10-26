@@ -17,6 +17,7 @@ releases.
 | `com.seanproctor:compose-docking-core` | Layout engine, state model, docking machinery, unstyled renderer | JVM (desktop), Android, iOS, wasmJs |
 | `com.seanproctor:compose-docking-material3` | Material 3 renderer | same as core |
 | `com.seanproctor:compose-docking-jewel` | Jewel (IntelliJ look-and-feel) renderer | JVM only |
+| `com.seanproctor:compose-docking-tao` | Floating windows and cross-window drag in [Nucleus](https://github.com/NucleusFramework/Nucleus) Tao windows (experimental) | JVM only |
 
 Floating OS windows and cross-window drag are desktop (JVM) features. Everything else —
 splits, tabs, in-window drag-to-dock, tab reordering, maximize, persistence —
@@ -137,6 +138,27 @@ dockable("output", title = { "Output" }, trailingActions = {
 Supply a `FloatingWindowHost` to `FloatingDockWindows` to build the windows differently —
 OS-decorated, or with a frame of your own.
 
+### Nucleus Tao windows (experimental)
+
+Apps on [Nucleus](https://github.com/NucleusFramework/Nucleus) 3.0's Tao windows have no
+AWT, so the floating windows above cannot be made there. `compose-docking-tao` makes them
+from Nucleus windows instead: call `TaoDockArea` in place of `DockArea` in each window,
+and `TaoFloatingDockWindows(state)` from the `nucleusApplication` scope. On native
+Wayland, drags ride the platform's drag-and-drop session.
+
+Nucleus 3.0 is only published as dev builds, and this module is built on parts of it that
+Nucleus marks experimental, so its whole API is behind `@ExperimentalDockingTaoApi` and
+may change or be removed in any release until Nucleus 3.0 is stable. Opt in with
+`@OptIn(ExperimentalDockingTaoApi::class)`, or for the whole module:
+
+```kotlin
+kotlin {
+    compilerOptions {
+        optIn.add("com.seanproctor.docking.tao.ExperimentalDockingTaoApi")
+    }
+}
+```
+
 ## Concepts
 
 - **`DockState`** — the single source of truth. Holds an immutable layout value
@@ -180,6 +202,7 @@ OS-decorated, or with a frame of your own.
 ./gradlew :demo:demo-material3:run                       # Material 3, desktop
 ./gradlew :demo:demo-material3:wasmJsBrowserDevelopmentRun   # Material 3, browser
 ./gradlew :demo:demo-jewel:run                           # IntelliJ look (needs JDK 25 toolchain)
+./gradlew :demo:demo-tao:run                             # Jewel on Nucleus Tao windows (JDK 25)
 ```
 
 ## Credits

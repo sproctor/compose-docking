@@ -7,6 +7,9 @@ plugins {
 kotlin {
     // Jewel's `-262.*` builds ship Java 25 bytecode, as in demo-jewel.
     jvmToolchain(25)
+    compilerOptions {
+        optIn.add("com.seanproctor.docking.tao.ExperimentalDockingTaoApi")
+    }
 }
 
 dependencies {

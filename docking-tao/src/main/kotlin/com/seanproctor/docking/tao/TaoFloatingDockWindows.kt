@@ -47,6 +47,7 @@ import dev.nucleusframework.application.NucleusWindow
  * host opens, it must call [content] inside it: that is the dock area, along with the
  * registration that lets cross-window drags find the window.
  */
+@ExperimentalDockingTaoApi
 @Stable
 public interface TaoFloatingWindowHost {
     /** Emit the window, once per floating window in the layout. */
@@ -63,6 +64,7 @@ public interface TaoFloatingWindowHost {
  * minimize, maximize and close are the application's, through
  * [com.seanproctor.docking.ui.LocalDockWindow] and [nucleusWindow].
  */
+@ExperimentalDockingTaoApi
 public object DefaultTaoFloatingWindowHost : TaoFloatingWindowHost {
     @Composable
     override fun NucleusApplicationScope.FloatingWindow(
@@ -83,6 +85,7 @@ public object DefaultTaoFloatingWindowHost : TaoFloatingWindowHost {
 }
 
 /** The [TaoFloatingWindowHost] [TaoFloatingDockWindows] uses unless given one. */
+@ExperimentalDockingTaoApi
 public val LocalTaoFloatingWindowHost: ProvidableCompositionLocal<TaoFloatingWindowHost> =
     staticCompositionLocalOf { DefaultTaoFloatingWindowHost }
 
@@ -109,6 +112,7 @@ public val LocalTaoFloatingWindowHost: ProvidableCompositionLocal<TaoFloatingWin
  * so it can be dropped back into another one. Moving a floating window itself is then the
  * compositor's (Super+drag on GNOME), and where a torn-off window opens is too.
  */
+@ExperimentalDockingTaoApi
 @Composable
 public fun NucleusApplicationScope.TaoFloatingDockWindows(
     state: DockState,

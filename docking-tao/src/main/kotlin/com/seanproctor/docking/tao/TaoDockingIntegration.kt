@@ -111,6 +111,7 @@ internal fun taoIntegration(state: DockState): TaoDockingIntegration = integrati
  * Read it when acting, not to drive composition: windows are tracked as they register,
  * which is not snapshot state.
  */
+@ExperimentalDockingTaoApi
 public fun DockState.nucleusWindow(windowId: WindowId = WindowId.MAIN): NucleusWindow? = taoIntegration(this).windows[windowId]
 
 /**
