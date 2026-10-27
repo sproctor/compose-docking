@@ -2,11 +2,13 @@ package com.seanproctor.docking.drag
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockLayout
@@ -23,6 +25,7 @@ import com.seanproctor.docking.tree.allowsRegion
 import com.seanproctor.docking.tree.findNode
 import com.seanproctor.docking.ui.DockAreaScope
 import com.seanproctor.docking.ui.platformDockCapabilities
+import com.seanproctor.docking.window.DockHostWindow
 
 /** What is being dragged, from where. */
 internal sealed interface DragSource {
@@ -66,6 +69,13 @@ internal class DragSession(
      * was dropped, which is what dragging a window is normally for.
      */
     val movesWindow: Boolean = false,
+    /**
+     * [originWindow]'s density as the drag began, for sizing a torn-off window from the
+     * dragged panel's pixels. Kept here because the window can close mid-drag - tearing out
+     * the last thing in a floating window empties it - and with it goes the dock area that
+     * knew the density.
+     */
+    val originDensity: Float = 1f,
 ) {
     var screenPosition: Offset by mutableStateOf(Offset.Zero)
 
@@ -75,18 +85,15 @@ internal class DragSession(
      * the drop, so the root listeners leave the session alone.
      */
     var carriedByPlatform: Boolean = false
+
+    /**
+     * The window whose drop target took a platform-carried drag's drop: recorded there, applied
+     * when the platform ends the drag on the source ([DragController.endPlatformDrag]).
+     */
+    var platformDropWindow: WindowId? = null
     var hoveredWindow: WindowId? by mutableStateOf(null)
     var target: DropTarget by mutableStateOf(DropTarget.None)
     var handles: List<PositionedHandle> by mutableStateOf(emptyList())
-}
-
-/** Hooks for the desktop layer (preview window, watchdog). */
-internal interface DragListener {
-    /** True when the platform shows its own drag preview (suppresses the in-window ghost). */
-    val showsOwnPreview: Boolean get() = false
-    fun onDragStarted(session: DragSession) {}
-    fun onDragMoved(screenPosition: Offset) {}
-    fun onDragEnded() {}
 }
 
 /**
@@ -109,44 +116,63 @@ internal class DragController(private val state: DockState) {
     private val windows = linkedMapOf<WindowId, RegisteredWindow>()
 
     /**
-     * Window-root <-> shared drag space converters, set by the platform window host
-     * (identity when absent - the single-window case). Kept separate from window
-     * registration so host and DockArea effects may run in any order.
+     * The OS windows the application registered ([com.seanproctor.docking.window.registerDockingWindow]),
+     * in registration order: where each one's content is on screen, for mapping its root-local
+     * positions into the shared drag space and for finding the window under the pointer. A
+     * window registered here before or after its dock area is the same; the two are joined by id.
      */
-    private val converters = mutableMapOf<WindowId, ScreenConverter>()
+    private val hostWindows = linkedMapOf<WindowId, DockHostWindow>()
 
-    internal class ScreenConverter(
-        val toScreen: (Offset) -> Offset,
-        val fromScreen: (Offset) -> Offset,
-    )
-
-    fun setScreenConverter(
-        windowId: WindowId,
-        toScreen: (Offset) -> Offset,
-        fromScreen: (Offset) -> Offset,
-    ) {
-        converters[windowId] = ScreenConverter(toScreen, fromScreen)
+    fun registerHostWindow(windowId: WindowId, window: DockHostWindow) {
+        hostWindows[windowId] = window
     }
 
-    fun clearScreenConverter(windowId: WindowId) {
-        converters.remove(windowId)
+    fun unregisterHostWindow(windowId: WindowId, window: DockHostWindow) {
+        if (hostWindows[windowId] === window) hostWindows.remove(windowId)
     }
 
-    internal fun toScreen(windowId: WindowId, position: Offset): Offset =
-        converters[windowId]?.toScreen?.invoke(position) ?: position
+    fun hostWindow(windowId: WindowId): DockHostWindow? = hostWindows[windowId]
 
-    internal fun fromScreen(windowId: WindowId, position: Offset): Offset =
-        converters[windowId]?.fromScreen?.invoke(position) ?: position
+    /**
+     * Where each registered OS window's content is on screen, asked once. Reading a window's
+     * position can be a round trip to the display server, so a pointer move reads them all
+     * once and works from this.
+     */
+    private fun screenBounds(): Map<WindowId, Rect?> = hostWindows.mapValues { it.value.contentBoundsOnScreen() }
+
+    /** Where [windowId]'s root origin is in the shared space; null when it cannot say. */
+    private fun originOf(windowId: WindowId, bounds: Map<WindowId, Rect?>? = null): Offset? =
+        (if (bounds != null) bounds[windowId] else hostWindows[windowId]?.contentBoundsOnScreen())?.topLeft
+
+    /**
+     * Pixels of [windowId]'s Compose root per unit of the shared space: the OS window's own
+     * scale, or - with no OS window registered - its dock area's density, which then has
+     * only itself to agree with.
+     */
+    private fun densityOf(windowId: WindowId): Float =
+        hostWindows[windowId]?.density ?: windows[windowId]?.scope?.density ?: 1f
+
+    /**
+     * [position] in [windowId]'s root, in pixels, as a point in the shared space: screen
+     * coordinates in the window toolkit's logical units, which every window shares whatever
+     * the density of the monitor it is on. A window that cannot say where it is maps from its
+     * own origin, so its points are only ever compared with its own.
+     */
+    internal fun toScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
+        (originOf(windowId, bounds) ?: Offset.Zero) + position / densityOf(windowId)
+
+    internal fun fromScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
+        (position - (originOf(windowId, bounds) ?: Offset.Zero)) * densityOf(windowId)
 
     internal fun registeredWindows(): List<RegisteredWindow> = windows.values.toList()
 
     /**
-     * Desktop layer override: the topmost registered window at a screen point, ignoring
-     * the excluded one - which is the window being dragged, and so always in the way.
+     * How many preview windows the application is drawing
+     * ([com.seanproctor.docking.window.DockingWindowHost.claimDragPreview]): while any is, the
+     * dock areas leave out their in-window ghost card. Snapshot state, so a claim taken or
+     * released mid-drag redraws the hovered dock area at once.
      */
-    var windowResolver: ((screen: Offset, exclude: WindowId?) -> WindowId?)? = null
-
-    var dragListener: DragListener? = null
+    var previewClaims: Int by mutableIntStateOf(0)
 
     var session: DragSession? by mutableStateOf(null)
         private set
@@ -172,27 +198,32 @@ internal class DragController(private val state: DockState) {
         if (session != null) return
         val payload = buildPayload(source, windowId, sourceSize) ?: return
         val snapshot = state.layout
+        val originDensity = densityOf(windowId)
         // Undocking is what turns a panel into a ghost following the pointer. A window
         // drag has the real window to follow it, and undocking would delete that window
         // out from under the gesture, so the payload stays where it is until the drop.
         if (!movesWindow) payload.all.forEach { state.undockTemporarily(it) }
-        val newSession = DragSession(source, payload, windowId, snapshot, movesWindow)
+        val newSession = DragSession(source, payload, windowId, snapshot, movesWindow, originDensity)
         session = newSession
-        dragListener?.onDragStarted(newSession)
         updateDrag(positionInWindow, windowId)
     }
 
     fun updateDrag(positionInWindow: Offset, windowId: WindowId) {
         val s = session ?: return
         if (windowId !in windows) return
-        val screen = toScreen(windowId, positionInWindow)
+        val bounds = screenBounds()
+        val screen = toScreen(windowId, positionInWindow, bounds)
         s.screenPosition = screen
-        dragListener?.onDragMoved(screen)
 
         // The dragged window sits under the pointer for the whole gesture - it is following
         // it - so it has to be looked past to find what is underneath, and it is never a
         // target for itself.
-        val hoveredId = resolveWindowAt(screen, exclude = s.originWindow.takeIf { s.movesWindow })
+        val hoveredId = resolveWindowAt(
+            screen,
+            bounds,
+            exclude = s.originWindow.takeIf { s.movesWindow },
+            from = windowId,
+        )
         if (hoveredId == null) {
             s.hoveredWindow = null
             s.handles = emptyList()
@@ -212,7 +243,7 @@ internal class DragController(private val state: DockState) {
             return
         }
         val hovered = windows[hoveredId] ?: return
-        val local = fromScreen(hoveredId, screen)
+        val local = fromScreen(hoveredId, screen, bounds)
         s.hoveredWindow = hoveredId
         s.handles = computeHandles(hovered, local, s.payload)
         s.target = resolveTarget(hovered, local, s)
@@ -222,11 +253,11 @@ internal class DragController(private val state: DockState) {
      * The pointer is at [positionInWindow] in [windowId]'s root, as that window's drop
      * target reports it: no shared screen space, the window is simply the hovered one.
      */
-    fun updateDragInWindow(positionInWindow: Offset, windowId: WindowId) {
+    private fun updateDragInWindow(positionInWindow: Offset, windowId: WindowId) {
         val s = session ?: return
         val hovered = windows[windowId] ?: return
-        s.screenPosition = positionInWindow
-        dragListener?.onDragMoved(positionInWindow)
+        val screen = toScreen(windowId, positionInWindow)
+        s.screenPosition = screen
         if (s.payload.options.limitedToWindow && windowId != s.originWindow) {
             s.hoveredWindow = windowId
             s.handles = emptyList()
@@ -253,6 +284,38 @@ internal class DragController(private val state: DockState) {
         drop()
     }
 
+    // ----- Drags the platform carries (see DockingDragHandover) -----
+
+    /** A window's drop target reports the pointer at [positionInWindow]; Unspecified is ignored. */
+    fun hoverInWindow(positionInWindow: Offset, windowId: WindowId) {
+        if (positionInWindow.isSpecified) updateDragInWindow(positionInWindow, windowId)
+    }
+
+    /**
+     * The pointer left [windowId]. Ignored once a window took the drop - targets are told
+     * the pointer left as the session winds down - and when the pointer is already reported
+     * over another window, whose enter may arrive before this one's exit.
+     */
+    fun exitWindow(windowId: WindowId) {
+        val s = session ?: return
+        if (s.platformDropWindow != null || s.hoveredWindow != windowId) return
+        leaveWindows()
+    }
+
+    /** [windowId]'s drop target takes the drop at [positionInWindow]: recorded, not applied. */
+    fun dropInWindow(positionInWindow: Offset, windowId: WindowId): Boolean {
+        val s = session ?: return false
+        hoverInWindow(positionInWindow, windowId)
+        s.platformDropWindow = windowId
+        return true
+    }
+
+    /** The platform ended the drag on the source: applies the recorded drop, or tears off. */
+    fun endPlatformDrag() {
+        val s = session ?: return
+        if (s.platformDropWindow != null) drop() else dropOutside()
+    }
+
     fun drop() {
         val s = session ?: return
         session = null
@@ -261,7 +324,6 @@ internal class DragController(private val state: DockState) {
             // target leaves the window where the user let go of it. Restoring the snapshot
             // here would undo the move itself and snap the window back.
             applyTarget(s)
-            dragListener?.onDragEnded()
             return
         }
         val applied = applyTarget(s)
@@ -270,14 +332,12 @@ internal class DragController(private val state: DockState) {
         } else if (s.payload.all.size > 1) {
             state.show(s.payload.primary)
         }
-        dragListener?.onDragEnded()
     }
 
     fun cancel() {
         val s = session ?: return
         session = null
         state.restoreSnapshot(s.snapshot)
-        dragListener?.onDragEnded()
     }
 
     // ----- Payload -----
@@ -326,12 +386,40 @@ internal class DragController(private val state: DockState) {
 
     // ----- Window resolution -----
 
-    private fun resolveWindowAt(screen: Offset, exclude: WindowId? = null): WindowId? {
-        windowResolver?.let { return it(screen, exclude) }
-        return windows.values.firstOrNull { reg ->
-            reg.windowId != exclude &&
-                reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen))
-        }?.windowId
+    /**
+     * The window under a shared-space point reported by window [from], ignoring [exclude]
+     * (the window being dragged, which is always under the pointer). With OS windows
+     * registered, the topmost of those whose content is there: the focused one when it is
+     * hit, else the most recently registered - floating windows register after the main one
+     * and usually stack above it. Without any (a single window, or tests), each dock area's
+     * own bounds.
+     *
+     * A window that cannot say where it is on screen (no [DockHostWindow.contentBoundsOnScreen],
+     * or no OS window registered for it) shares no space with the others: its positions pass
+     * through as they are, so a point it reports can only be over itself, tested against its
+     * own dock area. Drags out of such a window into another need the platform to carry them.
+     */
+    private fun resolveWindowAt(
+        screen: Offset,
+        bounds: Map<WindowId, Rect?>,
+        exclude: WindowId?,
+        from: WindowId,
+    ): WindowId? {
+        if (hostWindows.isEmpty()) {
+            return windows.values.firstOrNull { reg ->
+                reg.windowId != exclude &&
+                    reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen, bounds))
+            }?.windowId
+        }
+        if (bounds[from] == null) {
+            if (from == exclude) return null
+            return from.takeIf { windows[from]?.scope?.bounds?.rootBounds?.contains(fromScreen(from, screen, bounds)) == true }
+        }
+        val hits = hostWindows.entries.filter { (id, _) ->
+            id != exclude && id in windows && bounds[id]?.contains(screen) == true
+        }
+        if (hits.isEmpty()) return null
+        return (hits.firstOrNull { it.value.isFocused } ?: hits.last()).key
     }
 
     // ----- Handles -----
@@ -517,13 +605,14 @@ internal class DragController(private val state: DockState) {
                 anyDocked
             }
             is DropTarget.NewWindow -> {
-                val originDensity = windows[s.originWindow]?.scope?.density ?: 1f
+                val originDensity = s.originDensity
                 val sizeDp = s.payload.sourceSize?.let { Size(it.width / originDensity, it.height / originDensity) }
                 state.moveToNewWindow(
                     primary,
                     WindowBounds(
-                        x = target.screenPosition.x / originDensity - SPAWN_CURSOR_OFFSET_X_DP,
-                        y = target.screenPosition.y / originDensity - SPAWN_CURSOR_OFFSET_Y_DP,
+                        // The shared space is already in the units window bounds are kept in.
+                        x = target.screenPosition.x - SPAWN_CURSOR_OFFSET_X_DP,
+                        y = target.screenPosition.y - SPAWN_CURSOR_OFFSET_Y_DP,
                         width = sizeDp?.width ?: DEFAULT_FLOAT_WIDTH_DP,
                         height = sizeDp?.height ?: DEFAULT_FLOAT_HEIGHT_DP,
                     ),

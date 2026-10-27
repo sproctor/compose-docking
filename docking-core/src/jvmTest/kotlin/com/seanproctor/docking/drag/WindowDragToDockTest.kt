@@ -1,6 +1,7 @@
 package com.seanproctor.docking.drag
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
@@ -10,6 +11,7 @@ import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.tree.windowContaining
 import com.seanproctor.docking.ui.DockAreaScope
+import com.seanproctor.docking.window.FakeHostWindow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -116,32 +118,31 @@ class WindowDragToDockTest {
         assertTrue(root is DockNode.Split, "B docked east of A")
     }
 
+    /** Main and [floatingId] both under the pointer at (20, 8), the floating window on top. */
+    private fun DockState.overlapping(floatingId: WindowId) {
+        val controller = dragController
+        controller.registerWindow(WindowId.MAIN, DockAreaScope(this, WindowId.MAIN))
+        controller.registerWindow(floatingId, DockAreaScope(this, floatingId))
+        controller.registerHostWindow(WindowId.MAIN, FakeHostWindow(Rect(0f, 0f, 800f, 600f)))
+        controller.registerHostWindow(floatingId, FakeHostWindow(Rect(0f, 0f, 400f, 300f), isFocused = true))
+    }
+
     // The dragged window follows the pointer, so it is under it for the whole gesture and
     // would answer every hit test itself. Unless it is looked past, a drag can only ever
     // find the window it started in, and dropping onto anything else is impossible.
     @Test
     fun theDraggedWindowIsLookedPastWhenResolvingATarget() {
         val (state, floatingId) = tornOff()
-        val controller = state.dragController
-        controller.registerWindow(WindowId.MAIN, DockAreaScope(state, WindowId.MAIN))
-        controller.registerWindow(floatingId, DockAreaScope(state, floatingId))
-        var excluded: WindowId? = null
-        var asked = false
-        controller.windowResolver = { _, exclude ->
-            asked = true
-            excluded = exclude
-            null
-        }
+        state.overlapping(floatingId)
 
-        controller.startDrag(
+        state.dragController.startDrag(
             source = DragSource.Header(B),
             positionInWindow = Offset(20f, 8f),
             windowId = floatingId,
             movesWindow = true,
         )
 
-        assertTrue(asked, "the drag resolved a target window")
-        assertEquals(floatingId, excluded, "its own window is excluded")
+        assertEquals(WindowId.MAIN, state.dragController.session?.hoveredWindow, "its own window is looked past")
     }
 
     // Nothing is excluded for an ordinary drag: the panel has already left its window, so
@@ -149,18 +150,15 @@ class WindowDragToDockTest {
     @Test
     fun anOrdinaryDragExcludesNothing() {
         val (state, floatingId) = tornOff()
-        val controller = state.dragController
-        controller.registerWindow(floatingId, DockAreaScope(state, floatingId))
-        var excluded: WindowId? = floatingId
-        controller.windowResolver = { _, exclude -> excluded = exclude; null }
+        state.overlapping(floatingId)
 
-        controller.startDrag(
+        state.dragController.startDrag(
             source = DragSource.Header(B),
             positionInWindow = Offset(20f, 8f),
             windowId = floatingId,
         )
 
-        assertNull(excluded)
+        assertEquals(floatingId, state.dragController.session?.hoveredWindow)
     }
 
     // Escape during a window drag puts everything back, including where the window was:

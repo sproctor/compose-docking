@@ -7,21 +7,20 @@ plugins {
 kotlin {
     // Jewel's `-262.*` builds ship Java 25 bytecode, as in demo-jewel.
     jvmToolchain(25)
-    compilerOptions {
-        optIn.add("com.seanproctor.docking.tao.ExperimentalDockingTaoApi")
-    }
 }
 
 dependencies {
     implementation(project(":docking-core"))
     implementation(project(":docking-jewel"))
-    implementation(project(":docking-tao"))
     implementation(project(":demo:demo-shared"))
     implementation(compose.desktop.currentOs) {
         exclude(group = "org.jetbrains.compose.material")
     }
     implementation(libs.nucleus.application)
     implementation(libs.nucleus.decorated.window.tao)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(compose.desktop.uiTestJUnit4)
 }
 
 // Nucleus windows need no JetBrains Runtime (no AWT in the process), but Jewel's classes

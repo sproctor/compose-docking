@@ -85,10 +85,9 @@ public class DockState(
         com.seanproctor.docking.drag.DragController(this)
     }
 
-    /** The window-system adapters' view of [dragController]. */
-    @OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
-    internal val windowHostBridge: com.seanproctor.docking.spi.DockingWindowHost by lazy {
-        com.seanproctor.docking.spi.DockingWindowHost(this)
+    /** The application's view of [dragController]'s drags between OS windows. */
+    internal val windowHostBridge: com.seanproctor.docking.window.DockingWindowHost by lazy {
+        com.seanproctor.docking.window.DockingWindowHost(this)
     }
 
     // ----- Transient UI state (never persisted) -----

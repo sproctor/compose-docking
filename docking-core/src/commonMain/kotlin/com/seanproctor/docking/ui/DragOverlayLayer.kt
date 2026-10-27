@@ -7,11 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import com.seanproctor.docking.window.windowHost
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -76,7 +73,7 @@ internal fun DockAreaScope.DragOverlayLayer(modifier: Modifier) {
         }
 
         // Ghost card following the pointer (suppressed when the platform shows its own).
-        if (state.dragController.dragListener?.showsOwnPreview != true) {
+        if (state.dragController.previewClaims == 0) {
             val local = state.dragController.fromScreen(windowId, session.screenPosition) - rootOffset
             val spec = state.registry[session.payload.primary]
             Box(
@@ -193,13 +190,4 @@ internal fun Modifier.dragSessionRootListener(scope: DockAreaScope): Modifier = 
             }
         }
     }
-    .onPreviewKeyEvent { event ->
-        if (event.type == KeyEventType.KeyDown && event.key == Key.Escape &&
-            scope.state.dragController.session != null
-        ) {
-            scope.state.dragController.cancel()
-            true
-        } else {
-            false
-        }
-    }
+    .onPreviewKeyEvent { event -> scope.state.windowHost.cancelOnEscape(event) }

@@ -17,7 +17,6 @@ releases.
 | `com.seanproctor:compose-docking-core` | Layout engine, state model, docking machinery, unstyled renderer | JVM (desktop), Android, iOS, wasmJs |
 | `com.seanproctor:compose-docking-material3` | Material 3 renderer | same as core |
 | `com.seanproctor:compose-docking-jewel` | Jewel (IntelliJ look-and-feel) renderer | JVM only |
-| `com.seanproctor:compose-docking-tao` | Floating windows and cross-window drag in [Nucleus](https://github.com/NucleusFramework/Nucleus) Tao windows (experimental) | JVM only |
 
 Floating OS windows and cross-window drag are desktop (JVM) features. Everything else —
 splits, tabs, in-window drag-to-dock, tab reordering, maximize, persistence —
@@ -75,7 +74,11 @@ fun main() = application {
     // Restore on launch + debounced auto-save on every layout change.
     rememberAutoPersist(state, FileLayoutStorage(File(configDir, "layout.json")))
 
-    Window(onCloseRequest = ::exitApplication, title = "My App") {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "My App",
+        onPreviewKeyEvent = state.windowHost::cancelOnEscape,  // Esc cancels a drag
+    ) {
         MaterialTheme {
             Material3Docking {
                 registerDockingWindow(state)   // desktop: cross-window drag + focus handling
@@ -135,29 +138,56 @@ dockable("output", title = { "Output" }, trailingActions = {
 }) { OutputPane() }
 ```
 
-Supply a `FloatingWindowHost` to `FloatingDockWindows` to build the windows differently —
-OS-decorated, or with a frame of your own.
+### Your own windows and decorations
 
-### Nucleus Tao windows (experimental)
-
-Apps on [Nucleus](https://github.com/NucleusFramework/Nucleus) 3.0's Tao windows have no
-AWT, so the floating windows above cannot be made there. `compose-docking-tao` makes them
-from Nucleus windows instead: call `TaoDockArea` in place of `DockArea` in each window,
-and `TaoFloatingDockWindows(state)` from the `nucleusApplication` scope. On native
-Wayland, drags ride the platform's drag-and-drop session.
-
-Nucleus 3.0 is only published as dev builds, and this module is built on parts of it that
-Nucleus marks experimental, so its whole API is behind `@ExperimentalDockingTaoApi` and
-may change or be removed in any release until Nucleus 3.0 is stable. Opt in with
-`@OptIn(ExperimentalDockingTaoApi::class)`, or for the whole module:
+`FloatingDockWindows(state)` makes the windows for you. To build them yourself — an OS
+title bar, one you draw, a design system's window, another window toolkit entirely — pass a
+lambda instead, and the library hands you one `FloatingWindowModel` per floating window:
 
 ```kotlin
-kotlin {
-    compilerOptions {
-        optIn.add("com.seanproctor.docking.tao.ExperimentalDockingTaoApi")
+FloatingDockWindows(state) { model ->
+    Window(
+        onCloseRequest = model.onCloseRequest,
+        state = model.state,
+        title = model.title,
+        undecorated = true,
+        onPreviewKeyEvent = state.windowHost::cancelOnEscape,
+    ) {
+        registerDockingWindow(state, model.windowId)
+        Column {
+            MyTitleBar(model.title, Modifier.dockWindowDragArea(state, model.windowId))
+            DockArea(state, model.windowId, Modifier.weight(1f))
+        }
     }
 }
+DockDragPreviewWindow(state)  // the window that follows the pointer during a drag
 ```
+
+- **`model.state`** is bound to the layout both ways: moves and resizes persist, and a
+  restored layout moves the window. Show the window with it.
+- **`Modifier.dockWindowDragArea(state, windowId)`** makes any element a title bar: it moves
+  the window, and released over another dock area docks what the window holds there (a lone
+  dockable or a tab group; anything else is only moved). An OS title bar can move a window
+  but never dock it, since the window manager keeps the pointer to itself. Or pass
+  `DockArea(..., headerDragsWindow = true)` to let the lone dockable's header, or a lone tab
+  group's strip, be the title bar, the way the built-in windows do.
+- **`state.windowHost::cancelOnEscape`** as a window's `onPreviewKeyEvent` makes Esc cancel a
+  drag whatever has focus — a title bar outside the dock area does not take it.
+- **`registerDockingWindow(state, windowId, window)`** connects any OS window: implement
+  `DockHostWindow` — where its content is on screen and how to move it, in the toolkit's own
+  logical screen units (don't scale them); its `density`, the window's own pixels per unit as
+  the toolkit applies it (not `LocalDensity`, which a UI zoom may override); and whether it
+  has focus — and drags pass between windows, across monitors of different densities too.
+  `FrameWindowScope.registerDockingWindow(state)` does this for a Compose Desktop window;
+  `state.hostWindow(windowId)` gives it back to window buttons.
+- **Platform drag-and-drop**: where windows cannot see the pointer outside themselves
+  (native Wayland), provide a `DockingDragHandover` around the `DockArea` to start each drag
+  in the platform's own session, and report it from each window's drop target to
+  `state.windowHost` (`hoverInWindow`, `exitWindow`, `dropInWindow`, `endPlatformDrag`).
+
+`demo-tao` uses all of this to dock in [Nucleus](https://github.com/NucleusFramework/Nucleus)
+Tao windows, with no AWT in the process and no Nucleus in the library: see
+[`NucleusDocking.kt`](demo/demo-tao/src/main/kotlin/com/seanproctor/docking/demo/NucleusDocking.kt).
 
 ## Concepts
 
@@ -202,7 +232,7 @@ kotlin {
 ./gradlew :demo:demo-material3:run                       # Material 3, desktop
 ./gradlew :demo:demo-material3:wasmJsBrowserDevelopmentRun   # Material 3, browser
 ./gradlew :demo:demo-jewel:run                           # IntelliJ look (needs JDK 25 toolchain)
-./gradlew :demo:demo-tao:run                             # Jewel on Nucleus Tao windows (JDK 25)
+./gradlew :demo:demo-tao:run                             # Jewel in Nucleus Tao windows, app-side integration (JDK 25)
 ```
 
 ## Credits

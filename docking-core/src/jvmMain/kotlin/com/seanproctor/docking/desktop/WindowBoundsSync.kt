@@ -1,4 +1,4 @@
-package com.seanproctor.docking.spi
+package com.seanproctor.docking.desktop
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,11 +17,13 @@ import kotlin.math.abs
 /**
  * Keeps floating window [windowId]'s OS window and its layout entry in step, both ways: OS
  * moves and resizes flow into the layout (debounced, for persistence), and layout changes
- * from a restore flow back to the window. A value-compare echo guard breaks the loop.
+ * from a restore - or a window drag cancelled with Escape - flow back to the window. A
+ * value-compare echo guard breaks the loop.
  *
- * Call it once per floating window, with the [WindowState] its OS window is shown with.
+ * [FloatingDockWindows] calls it for every window it emits. Call it yourself only when you
+ * emit floating windows without it, once per window, with the [WindowState] the OS window is
+ * shown with.
  */
-@DockingWindowHostApi
 @OptIn(FlowPreview::class)
 @Composable
 public fun SyncDockWindowBounds(

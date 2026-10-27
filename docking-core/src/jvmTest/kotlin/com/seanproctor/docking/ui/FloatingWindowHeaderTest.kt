@@ -1,6 +1,9 @@
 package com.seanproctor.docking.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -21,6 +24,11 @@ import com.seanproctor.docking.spi.HeaderModel
 import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
+import com.seanproctor.docking.tree.windowContaining
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
+import com.seanproctor.docking.spi.TabStripModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -35,7 +43,7 @@ private fun uiState(): DockState = DockState {
     dockable("b", title = { "Beta" }) { BasicText("content-b") }
 }
 
-/** A with B torn off into a floating window of its own - where move handles live. */
+/** A with B torn off into a floating window of its own - where a header can drag its window. */
 private fun tornOff(): Pair<DockState, WindowId> {
     val state = uiState()
     state.dock(A)
@@ -86,51 +94,63 @@ class FloatingWindowHeaderTest {
         assertEquals(setOf(A, B), renderer.headers.toSet())
     }
 
-    // The window's lone dockable gets its header wrapped in the move handle, which is what
-    // drags an undecorated window. Wrapping must not cost it its header.
+    // The window's lone dockable gets its header wrapped in a window drag area, which is
+    // what drags an undecorated window. Wrapping must not cost it its header.
     @Test
-    fun theMoveHandleWrapsTheHeaderRatherThanReplacingIt() = runComposeUiTest {
+    fun theDragAreaWrapsTheHeaderRatherThanReplacingIt() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         val renderer = HeaderRecordingRenderer()
-        var wrapped = 0
         setContent {
-            CompositionLocalProvider(
-                LocalDockingRenderer provides renderer,
-                LocalWindowMoveHandle provides { content -> wrapped++; Box { content() } },
-            ) { DockArea(state, floatingId) }
+            CompositionLocalProvider(LocalDockingRenderer provides renderer) {
+                DockArea(state, floatingId, Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
         }
         assertEquals(listOf(B), renderer.headers.distinct(), "still drawn")
-        assertTrue(wrapped > 0, "and drawn inside the move handle")
+
+        onNodeWithText("Beta").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+        assertEquals(true, state.dragController.session?.movesWindow, "and dragging it drags the window")
     }
 
     // Only the lone dockable's header stands where a title bar would. A split has no single
     // pane to speak for the window, so none of its headers may swallow the window drag.
     @Test
-    fun aSplitGetsNoMoveHandle() = runComposeUiTest {
+    fun aSplitHeaderDoesNotDragTheWindow() = runComposeUiTest {
         val state = uiState()
         state.dock(A)
         state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
-        var wrapped = 0
+        state.moveToNewWindow(A, WindowBounds(10f, 10f, 300f, 200f))
+        val floatingId = state.layout.floatingWindows.single().id
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
         setContent {
-            CompositionLocalProvider(
-                LocalDockingRenderer provides HeaderRecordingRenderer(),
-                LocalWindowMoveHandle provides { content -> wrapped++; Box { content() } },
-            ) { DockArea(state) }
+            CompositionLocalProvider(LocalDockingRenderer provides HeaderRecordingRenderer()) {
+                DockArea(state, floatingId, Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
         }
-        assertEquals(0, wrapped, "no header in a split drags the window")
+
+        onNodeWithText("Beta").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+        assertEquals(false, state.dragController.session?.movesWindow, "no header in a split drags the window")
     }
 
     // Two drag gestures on one header would race, and the header's own - being the inner
     // one - wins, tearing the panel out of the window the user was only trying to move.
-    // So where a move handle owns the drag, the header is built without one.
+    // So where the header drags the window, it is built without a drag of its own.
     @Test
     fun aFramedHeaderDoesNotAlsoStartATearOutDrag() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         setContent {
-            CompositionLocalProvider(
-                LocalDockingRenderer provides HeaderRecordingRenderer(),
-                LocalWindowMoveHandle provides { content -> Box { content() } },
-            ) { DockArea(state, floatingId, Modifier.fillMaxSize()) }
+            CompositionLocalProvider(LocalDockingRenderer provides HeaderRecordingRenderer()) {
+                DockArea(state, floatingId, Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
         }
 
         onNodeWithText("Beta").performMouseInput {
@@ -141,8 +161,8 @@ class FloatingWindowHeaderTest {
         }
         waitForIdle()
 
-        assertNull(state.dragController.session, "no drag session was started by the header")
-        assertTrue(state.isDocked(B), "and the panel was not torn out of its window")
+        assertNull(state.dragController.session, "the window drag ended with the release")
+        assertEquals(floatingId, state.layout.windowContaining(B)?.id, "and the panel was not torn out of its window")
     }
 
     // Without a handle - every docked pane - the header keeps its own drag, or nothing could
@@ -196,5 +216,85 @@ class FloatingWindowHeaderTest {
         assertEquals(true, insideFloating?.isFloating, "B is in the torn-off window")
         assertEquals(floatingId, insideFloating?.windowId)
         assertEquals(false, insideMain?.isFloating, "A stayed in the main window")
+    }
+
+    // The main window has no title bar to stand in for: its lone dockable's header keeps
+    // tearing the panel out, whatever the dock area was asked.
+    @Test
+    fun theMainWindowsHeaderNeverDragsTheWindow() = runComposeUiTest {
+        val state = uiState()
+        state.dock(A)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides HeaderRecordingRenderer()) {
+                DockArea(state, modifier = Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
+        }
+
+        onNodeWithText("Alpha").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        assertEquals(false, assertNotNull(state.dragController.session).movesWindow, "a tear-out, not a window drag")
+    }
+
+    // A window holding one tab group has no header to drag it by; the empty part of its strip
+    // is the title bar, and the group docks as a whole when it is let go.
+    @Test
+    fun aLoneTabGroupsStripDragsItsWindow() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        state.dock(A, DockTarget.OnDockable(B), DockRegion.Center)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides GutterTaggingRenderer) {
+                DockArea(state, floatingId, Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
+        }
+
+        onNodeWithTag("gutter").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        val session = assertNotNull(state.dragController.session)
+        assertTrue(session.movesWindow, "the strip carries the window")
+        assertEquals(listOf(B, A), session.payload.all, "and with it the whole group")
+    }
+
+    // Without being asked, the strip keeps tearing its group out of the window.
+    @Test
+    fun aTabGroupsStripKeepsItsOwnDragUnlessAsked() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        state.dock(A, DockTarget.OnDockable(B), DockRegion.Center)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides GutterTaggingRenderer) {
+                DockArea(state, floatingId, Modifier.fillMaxSize())
+            }
+        }
+
+        onNodeWithTag("gutter").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        // Torn out, not carried: the group left its window, which emptied and closed.
+        assertNull(state.layout.window(floatingId), "the window the group was in is gone")
+        assertTrue(state.isDocked(A) && state.isDocked(B), "and the group is somewhere else")
+    }
+}
+
+/** Draws the tab strip as the debug renderer does, with its gutter as a tagged box to drag. */
+private object GutterTaggingRenderer : DockingRenderer by DebugDockingRenderer {
+    @Composable
+    override fun TabStrip(model: TabStripModel, modifier: Modifier) {
+        Column(modifier) {
+            DebugDockingRenderer.TabStrip(model, Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth().height(24.dp).testTag("gutter").then(model.gutterDragModifier))
+        }
     }
 }

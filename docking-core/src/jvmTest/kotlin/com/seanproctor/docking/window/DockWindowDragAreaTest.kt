@@ -1,6 +1,7 @@
-package com.seanproctor.docking.desktop
+package com.seanproctor.docking.window
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -11,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performMouseInput
@@ -48,19 +50,19 @@ private fun tornOff(): Pair<DockState, WindowId> {
 }
 
 /**
- * The header gesture of an undecorated floating window. There is no AWT window behind it
- * here, so nothing moves - what is under test is the session it drives, and in particular
- * that it never leaves one open. An open session turns away every drag after it, so a leak
- * here is not a glitch in one drag but the end of dragging altogether.
+ * [dockWindowDragArea]: a title bar, or the header standing in for one, dragging its window.
+ * Mostly the session it drives, and in particular that it never leaves one open. An open
+ * session turns away every drag after it, so a leak here is not a glitch in one drag but the
+ * end of dragging altogether.
  */
 @OptIn(ExperimentalTestApi::class)
-class WindowDragGestureTest {
+class DockWindowDragAreaTest {
 
     @Test
     fun draggingTheHeaderStartsAWindowDrag() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         setContent {
-            Box(Modifier.size(200.dp).windowDragToDock(state, floatingId, B, density = 1f)) {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
                 BasicText("header")
             }
         }
@@ -81,7 +83,7 @@ class WindowDragGestureTest {
     fun releasingEndsTheSession() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         setContent {
-            Box(Modifier.size(200.dp).windowDragToDock(state, floatingId, B, density = 1f)) {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
                 BasicText("header")
             }
         }
@@ -107,7 +109,7 @@ class WindowDragGestureTest {
         var present by mutableStateOf(true)
         setContent {
             if (present) {
-                Box(Modifier.size(200.dp).windowDragToDock(state, floatingId, B, density = 1f)) {
+                Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
                     BasicText("header")
                 }
             }
@@ -134,7 +136,7 @@ class WindowDragGestureTest {
     fun aSessionEndedElsewhereDoesNotStrandTheGesture() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         setContent {
-            Box(Modifier.size(200.dp).windowDragToDock(state, floatingId, B, density = 1f)) {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
                 BasicText("header")
             }
         }
@@ -171,7 +173,7 @@ class WindowDragGestureTest {
     fun aConsumedPressDoesNotDragTheWindow() = runComposeUiTest {
         val (state, floatingId) = tornOff()
         setContent {
-            Box(Modifier.size(200.dp).windowDragToDock(state, floatingId, B, density = 1f)) {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
                 Box(
                     Modifier.size(60.dp).pointerInput(Unit) {
                         awaitEachGesture {
@@ -193,5 +195,100 @@ class WindowDragGestureTest {
 
         assertNull(state.dragController.session, "the button's press never became a window drag")
         assertEquals(floatingId, state.layout.floatingWindows.single().id, "and nothing moved")
+    }
+
+    @Test
+    fun theWindowFollowsThePointer() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        // The test's pointer moves over a box that stays put, as it would over a window whose
+        // moves never land: the window is asked to go wherever the pointer has.
+        val window = FakeHostWindow(Rect(600f, 100f, 1000f, 400f), landsMoves = false)
+        state.dragController.registerHostWindow(floatingId, window)
+        setContent {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
+                BasicText("header")
+            }
+        }
+
+        onNodeWithText("header").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(6) { moveTo(center + Offset(0f, 15f * (it + 1))) }
+        }
+        waitForIdle()
+
+        assertEquals(Offset(600f, 190f), window.moves.last())
+    }
+
+    // On a 2x window the pointer covers two pixels per unit of screen: the window moves by half
+    // the pixels, or it would run away from the pointer.
+    @Test
+    fun theWindowFollowsThePointerAtDensityTwo() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        val window = FakeHostWindow(Rect(600f, 100f, 1000f, 400f), landsMoves = false, density = 2f)
+        state.dragController.registerHostWindow(floatingId, window)
+        setContent {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
+                BasicText("header")
+            }
+        }
+
+        onNodeWithText("header").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(6) { moveTo(center + Offset(0f, 15f * (it + 1))) }
+        }
+        waitForIdle()
+
+        assertEquals(Offset(600f, 145f), window.moves.last())
+    }
+
+    // A title bar the application draws over a split: nowhere to dock it, but it still moves.
+    @Test
+    fun aWindowThatCannotDockIsStillMoved() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        state.dock(A, DockTarget.OnDockable(B), DockRegion.South)
+        val window = FakeHostWindow(Rect(600f, 100f, 1000f, 400f))
+        state.dragController.registerHostWindow(floatingId, window)
+        setContent {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
+                BasicText("header")
+            }
+        }
+
+        onNodeWithText("header").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(6) { moveTo(center + Offset(15f * (it + 1), 0f)) }
+            release()
+        }
+        waitForIdle()
+
+        assertNull(state.dragController.session, "no drag to dock")
+        assertTrue(window.moves.isNotEmpty(), "but the window moved")
+    }
+
+    // A grab point away from the window's origin is where the drop is aimed from; the drag
+    // must report it in window coordinates, not the title bar's own.
+    @Test
+    fun theDragIsReportedInWindowCoordinates() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        setContent {
+            Box(Modifier.padding(start = 50.dp, top = 30.dp).size(100.dp).dockWindowDragArea(state, floatingId)) {
+                BasicText("header")
+            }
+        }
+
+        onNodeWithText("header").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(6) { moveTo(center + Offset(0f, 15f * (it + 1))) }
+        }
+        waitForIdle()
+
+        val session = assertNotNull(state.dragController.session)
+        // No OS window registered: positions pass through unchanged, so the pointer's place in
+        // the window is its place on the pretend screen.
+        assertTrue(session.screenPosition.x > 50f, "x offset of the title bar is included: ${session.screenPosition}")
     }
 }
