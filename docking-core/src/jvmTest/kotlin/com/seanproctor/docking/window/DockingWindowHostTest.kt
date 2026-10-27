@@ -37,7 +37,7 @@ internal class FakeHostWindow(
     var bounds: Rect?,
     override var isFocused: Boolean = false,
     private val landsMoves: Boolean = true,
-    override var density: Float = 1f,
+    override var density: Float? = 1f,
 ) : DockHostWindow {
     val moves = mutableListOf<Offset>()
 
@@ -385,6 +385,16 @@ class DockingWindowHostTest {
         assertEquals(Offset(750f, 50f), state.dragController.toScreen(floatingId, Offset(100f, 100f)))
     }
 
+    // A window that cannot say its scale yet is converted with its dock area's density, not 1.
+    @Test
+    fun anUnknownWindowScaleFallsBackToTheDockArea() {
+        val (state, floatingId) = twoWindows(floatingBounds = Rect(700f, 0f, 1000f, 200f))
+        (state.hostWindow(floatingId) as FakeHostWindow).density = null
+        state.dragController.window(floatingId)?.scope?.density = 2f
+
+        assertEquals(Offset(750f, 50f), state.dragController.toScreen(floatingId, Offset(100f, 100f)))
+    }
+
     @Test
     fun positionsMapThroughTheContentOrigin() {
         val (state, floatingId) = twoWindows()
@@ -414,44 +424,52 @@ class WindowChaseTest {
     private val start = Offset(100f, 100f)
     private val press = Offset(20f, 10f)
 
-    private fun chase() = WindowChase(start, press, density = 2f)
+    private fun chase() = WindowChase(start, press)
 
     @Test
     fun theFirstMoveFollowsThePointerFromThePress() {
         // Pointer +20 px = +10 units, window not moved yet.
-        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = start))
+        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = start, density = 2f))
     }
 
     @Test
     fun aMoveStillPendingIsNotCountedTwice() {
         val chase = chase()
-        chase.next(Offset(40f, 10f), observed = start)
+        chase.next(Offset(40f, 10f), observed = start, density = 2f)
         // The pointer moves another +10 units before the first move lands: the event is still
         // relative to the window at (100, 100), pointer on screen at (130, 105).
-        assertEquals(Offset(120f, 100f), chase.next(Offset(60f, 10f), observed = start))
+        assertEquals(Offset(120f, 100f), chase.next(Offset(60f, 10f), observed = start, density = 2f))
     }
 
     @Test
     fun aMoveThatLandedIsCountedOnce() {
         val chase = chase()
-        chase.next(Offset(40f, 10f), observed = start)
+        chase.next(Offset(40f, 10f), observed = start, density = 2f)
         // The window is now at (110, 100) and the pointer has moved +10 units more: it is at
         // (130, 105) on screen, (20, 5) units = (40, 10) px in the moved window.
-        assertEquals(Offset(120f, 100f), chase.next(Offset(40f, 10f), observed = Offset(110f, 100f)))
+        assertEquals(Offset(120f, 100f), chase.next(Offset(40f, 10f), observed = Offset(110f, 100f), density = 2f))
     }
 
     @Test
     fun aMoveLandingBetweenEventsIsPickedUpLate() {
         val chase = chase()
-        chase.next(Offset(40f, 10f), observed = start)
-        chase.next(Offset(60f, 10f), observed = start)
+        chase.next(Offset(40f, 10f), observed = start, density = 2f)
+        chase.next(Offset(60f, 10f), observed = start, density = 2f)
         // Both moves land at once (window at (120, 100)); the pointer has not moved since, so
         // in the window it is back at the press point.
-        assertEquals(Offset(120f, 100f), chase.next(press, observed = Offset(120f, 100f)))
+        assertEquals(Offset(120f, 100f), chase.next(press, observed = Offset(120f, 100f), density = 2f))
+    }
+
+    // Dragged onto a 1x monitor mid-drag: from there on, pixels are one to a unit.
+    @Test
+    fun aChangeOfDensityMidDragIsFollowed() {
+        val chase = chase()
+        chase.next(Offset(40f, 10f), observed = start, density = 2f)
+        assertEquals(Offset(130f, 100f), chase.next(Offset(60f, 10f), observed = start, density = 1f))
     }
 
     @Test
     fun anUnknownPositionTrustsThePointerAlone() {
-        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = null))
+        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = null, density = 2f))
     }
 }

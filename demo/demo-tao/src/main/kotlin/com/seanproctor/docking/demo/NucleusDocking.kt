@@ -69,7 +69,7 @@ class NucleusHostWindow(
         return Rect(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
     }
 
-    override val density: Float get() = window.unsafe.taoWindow?.scaleFactor ?: 1f
+    override val density: Float? get() = window.unsafe.taoWindow?.scaleFactor
 
     override val isFocused: Boolean get() = window.isFocused
 

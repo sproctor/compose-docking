@@ -166,7 +166,7 @@ abstract interface com.seanproctor.docking.spi/DockingRenderer { // com.seanproc
 
 abstract interface com.seanproctor.docking.window/DockHostWindow { // com.seanproctor.docking.window/DockHostWindow|null[0]
     abstract val density // com.seanproctor.docking.window/DockHostWindow.density|{}density[0]
-        abstract fun <get-density>(): kotlin/Float // com.seanproctor.docking.window/DockHostWindow.density.<get-density>|<get-density>(){}[0]
+        abstract fun <get-density>(): kotlin/Float? // com.seanproctor.docking.window/DockHostWindow.density.<get-density>|<get-density>(){}[0]
     open val isFocused // com.seanproctor.docking.window/DockHostWindow.isFocused|{}isFocused[0]
         open fun <get-isFocused>(): kotlin/Boolean // com.seanproctor.docking.window/DockHostWindow.isFocused.<get-isFocused>|<get-isFocused>(){}[0]
 

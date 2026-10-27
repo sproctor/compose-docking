@@ -118,12 +118,7 @@ private class DockWindowDragNode(
                     }
                     if (!moving && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         moving = true
-                        val window = state.hostWindow(windowId)
-                        chase =
-                            window?.contentBoundsOnScreen()?.let {
-                                // The window's own scale: LocalDensity may be an app's zoom.
-                                WindowChase(it.topLeft, origin, window.density)
-                            }
+                        chase = state.hostWindow(windowId)?.contentBoundsOnScreen()?.let { WindowChase(it.topLeft, origin) }
                         // Only ever drive a session this gesture opened: one already running
                         // belongs to someone else, and cancelling it on the way out would end it.
                         docking = host.startWindowDrag(windowId, toWindow(change.position))
@@ -131,7 +126,10 @@ private class DockWindowDragNode(
                     if (moving) {
                         change.consume()
                         val window = state.hostWindow(windowId)
-                        val next = chase?.next(change.position, window?.contentBoundsOnScreen()?.topLeft)
+                        // The window's own scale, read every move - it changes as the window
+                        // crosses onto another monitor - and not LocalDensity, which may be an
+                        // app's zoom.
+                        val next = chase?.next(change.position, window?.contentBoundsOnScreen()?.topLeft, window?.density ?: density)
                         if (next != null) window?.moveContentTo(next)
                         if (docking) host.updateDrag(toWindow(change.position), windowId)
                     }
@@ -148,7 +146,7 @@ private class DockWindowDragNode(
 
 /**
  * Where to move a window dragged by a point inside it, event by event, in screen logical units;
- * pointer positions arrive in the window's pixels, [density] of them to a unit. Moves land
+ * pointer positions arrive in the window's pixels, `density` of them to a unit. Moves land
  * asynchronously, so the window's observed position can lag the one last asked for. Each
  * event's local position is relative to the observed position, so the pointer's movement on
  * screen is its local movement plus the window's observed movement since the last event. That
@@ -158,16 +156,19 @@ private class DockWindowDragNode(
 internal class WindowChase(
     start: Offset,
     pressPosition: Offset,
-    private val density: Float,
 ) {
     private var requested = start
     private var lastObserved = start
     private var lastLocal = pressPosition
 
-    /** The pointer is at [local] in the window, which is observed at [observed] (null: unknown). */
+    /**
+     * The pointer is at [local] in the window, which is observed at [observed] (null: unknown)
+     * and has [density] pixels to a unit now.
+     */
     fun next(
         local: Offset,
         observed: Offset?,
+        density: Float,
     ): Offset {
         val windowMoved = observed?.let { it - lastObserved } ?: Offset.Zero
         requested += (local - lastLocal) / density + windowMoved

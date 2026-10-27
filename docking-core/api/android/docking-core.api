@@ -1265,7 +1265,7 @@ public final class com/seanproctor/docking/window/DockDragGrip {
 
 public abstract interface class com/seanproctor/docking/window/DockHostWindow {
 	public abstract fun contentBoundsOnScreen ()Landroidx/compose/ui/geometry/Rect;
-	public abstract fun getDensity ()F
+	public abstract fun getDensity ()Ljava/lang/Float;
 	public fun isFocused ()Z
 	public fun moveContentTo-k-4lQ0M (J)V
 }

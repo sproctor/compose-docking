@@ -33,10 +33,12 @@ public interface DockHostWindow {
     /**
      * Pixels of the window's Compose content per logical unit: the scale of the monitor it is
      * on, as the window toolkit applies it (AWT's graphics configuration transform, Nucleus's
-     * scale factor). The window's own, not `LocalDensity`, which an application may override -
-     * for a UI zoom, say - without changing how many pixels the window has.
+     * scale factor), read again on every pointer move, since a window dragged onto another
+     * monitor changes it. The window's own, not `LocalDensity`, which an application may
+     * override - for a UI zoom, say - without changing how many pixels the window has. Null
+     * while the toolkit cannot say yet; the dock area's density stands in for it then.
      */
-    public val density: Float
+    public val density: Float?
 
     /** Whether the window has input focus: where windows overlap, the focused one is on top. */
     public val isFocused: Boolean get() = false
