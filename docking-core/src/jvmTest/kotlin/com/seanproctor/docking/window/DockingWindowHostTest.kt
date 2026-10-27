@@ -240,6 +240,30 @@ class DockingWindowHostTest {
         assertFalse(host.drawsDragPreview)
     }
 
+    // The dock areas decide in composition whether to draw the ghost card; a claim taken or let
+    // go mid-drag has to reach them without waiting for the pointer to move.
+    @Test
+    fun claimsAreObservable() {
+        val host = setUp().state.windowHost
+        // State the set-up created is still unapplied; let it settle before watching.
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        val seen = mutableListOf<Boolean>()
+        val observer = androidx.compose.runtime.snapshots.SnapshotStateObserver { it() }
+        observer.start()
+        val read = { seen += host.drawsDragPreview }
+        lateinit var reobserve: (Any) -> Unit
+        reobserve = { observer.observeReads(Unit, reobserve, read) }
+        reobserve(Unit)
+
+        val claim = host.claimDragPreview()
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        claim.release()
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        observer.stop()
+
+        assertEquals(listOf(false, true, false), seen)
+    }
+
     // Tearing the last thing out of a floating window closes the window and its dock area goes
     // with it; the torn-off window is still sized from that window's pixels.
     @Test

@@ -2,6 +2,7 @@ package com.seanproctor.docking.drag
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
@@ -168,9 +169,10 @@ internal class DragController(private val state: DockState) {
     /**
      * How many preview windows the application is drawing
      * ([com.seanproctor.docking.window.DockingWindowHost.claimDragPreview]): while any is, the
-     * dock areas leave out their in-window ghost card.
+     * dock areas leave out their in-window ghost card. Snapshot state, so a claim taken or
+     * released mid-drag redraws the hovered dock area at once.
      */
-    var previewClaims: Int = 0
+    var previewClaims: Int by mutableIntStateOf(0)
 
     var session: DragSession? by mutableStateOf(null)
         private set

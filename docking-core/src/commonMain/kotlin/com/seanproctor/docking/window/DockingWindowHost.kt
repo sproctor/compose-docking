@@ -136,12 +136,15 @@ public class DockingWindowHost internal constructor(private val state: DockState
         get() = controller.previewClaims > 0
 
     /**
-     * Takes over drawing the drag preview, for a window of the application's own that follows
-     * [dragPreview]: the dock areas stop drawing the in-window ghost card until the claim is
-     * released. Claims count, so two owners - a preview window coming and one going, say -
-     * cannot switch each other's off. Don't claim where windows cannot be placed on screen
-     * (native Wayland), where the in-window card or the platform's drag icon is the only
-     * preview there can be.
+     * Takes over drawing the drag preview: the dock areas stop drawing the in-window ghost card
+     * until the claim is released. Claims count, so two owners - a preview window coming and one
+     * going, say - cannot switch each other's off.
+     *
+     * Claim it when something else shows the preview: a window of the application's own that
+     * follows [dragPreview], or, where drags are handed to the platform's drag-and-drop session
+     * ([DockingDragHandover], native Wayland), the platform's drag icon - the card would be a
+     * second preview beside it. Where windows cannot be placed and the dock areas carry their
+     * own drags, don't: the in-window card is the only preview there can be.
      */
     public fun claimDragPreview(): DragPreviewClaim {
         controller.previewClaims++
