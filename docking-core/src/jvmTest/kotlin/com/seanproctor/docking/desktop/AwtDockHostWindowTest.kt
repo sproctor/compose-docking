@@ -7,13 +7,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * An AWT window's geometry as the docking system takes it: AWT positions are logical, drags are
- * carried in pixels, and moving a window moves its frame, not its content.
+ * An AWT window's geometry as the docking system takes it: AWT's screen positions are the
+ * shared virtual-device coordinates already, and moving a window moves its frame, not its
+ * content.
  */
 class AwtDockHostWindowTest {
+    // Not scaled by the window's density: windows on monitors of different densities have to
+    // stay in one space, and AWT's virtual-device coordinates are that space.
     @Test
-    fun contentBoundsAreTheLogicalRectTimesTheDensity() {
-        assertEquals(Rect(200f, 100f, 1800f, 1300f), contentRectPx(100, 50, 800, 600, density = 2f))
+    fun contentBoundsAreAwtsOwnCoordinates() {
+        assertEquals(Rect(100f, 50f, 900f, 650f), contentRect(100, 50, 800, 600))
     }
 
     // An undecorated window: frame and content coincide.
@@ -21,7 +24,7 @@ class AwtDockHostWindowTest {
     fun anUndecoratedFrameGoesWhereTheContentShould() {
         assertEquals(
             IntOffset(150, 80),
-            frameLocationFor(Offset(300f, 160f), density = 2f, frameX = 100, frameY = 50, contentX = 100, contentY = 50),
+            frameLocationFor(Offset(150f, 80f), frameX = 100, frameY = 50, contentX = 100, contentY = 50),
         )
     }
 
@@ -31,7 +34,7 @@ class AwtDockHostWindowTest {
     fun aDecoratedFrameKeepsItsOffsetFromTheContent() {
         assertEquals(
             IntOffset(146, 50),
-            frameLocationFor(Offset(300f, 160f), density = 2f, frameX = 96, frameY = 20, contentX = 100, contentY = 50),
+            frameLocationFor(Offset(150f, 80f), frameX = 96, frameY = 20, contentX = 100, contentY = 50),
         )
     }
 }

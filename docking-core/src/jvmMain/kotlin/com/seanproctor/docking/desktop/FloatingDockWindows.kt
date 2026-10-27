@@ -8,6 +8,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
@@ -177,14 +178,13 @@ public fun ApplicationScope.DockDragPreviewWindow(state: DockState) {
         onDispose { claim.release() }
     }
     val preview = host.dragPreview ?: return
-    val density = preview.density
     val windowState = rememberWindowState(
-        position = previewPosition(preview.screenPosition.x, preview.screenPosition.y, density),
+        position = previewPosition(preview.screenPosition),
         size = DpSize.Unspecified,
     )
-    LaunchedEffect(host, windowState, density) {
+    LaunchedEffect(host, windowState) {
         snapshotFlow { host.dragPreview?.screenPosition }.collect {
-            if (it != null) windowState.position = previewPosition(it.x, it.y, density)
+            if (it != null) windowState.position = previewPosition(it)
         }
     }
     Window(
@@ -204,8 +204,5 @@ public fun ApplicationScope.DockDragPreviewWindow(state: DockState) {
     }
 }
 
-private fun previewPosition(
-    x: Float,
-    y: Float,
-    density: Float,
-): WindowPosition.Absolute = WindowPosition.Absolute((x / density + 14).dp, (y / density + 14).dp)
+private fun previewPosition(screen: Offset): WindowPosition.Absolute =
+    WindowPosition.Absolute((screen.x + 14).dp, (screen.y + 14).dp)

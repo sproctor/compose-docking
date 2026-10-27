@@ -125,7 +125,6 @@ public class DockingWindowHost internal constructor(private val state: DockState
             if (session.movesWindow) return null
             return DragPreviewInfo(
                 screenPosition = session.screenPosition,
-                density = session.originDensity,
                 dockableId = session.payload.primary,
             )
         }
@@ -189,10 +188,11 @@ public interface DragPreviewClaim {
 
 /** A drag's preview, as [DockingWindowHost.dragPreview] reports it. */
 public class DragPreviewInfo(
-    /** The pointer on screen, in pixels. */
+    /**
+     * The pointer on screen, in logical units (see [DockHostWindow]): where a preview window
+     * goes, as a Compose `WindowPosition` in dp.
+     */
     public val screenPosition: Offset,
-    /** The density of the window the drag started in, for turning [screenPosition] into dp. */
-    public val density: Float,
     /** The dockable to picture: its title and icon are in [DockState.registry]. */
     public val dockableId: DockableId,
 )

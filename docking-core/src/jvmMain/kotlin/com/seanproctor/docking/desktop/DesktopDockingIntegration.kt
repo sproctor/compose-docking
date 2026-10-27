@@ -1,12 +1,10 @@
 package com.seanproctor.docking.desktop
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.FrameWindowScope
 import com.seanproctor.docking.model.WindowId
@@ -16,19 +14,18 @@ import com.seanproctor.docking.window.hostWindow
 import kotlin.math.roundToInt
 
 /**
- * A Compose Desktop window as the docking system sees it. AWT reports positions in logical
- * units, which the window's density turns into the screen pixels drags are carried in.
+ * A Compose Desktop window as the docking system sees it. AWT's screen positions are already
+ * the logical, virtual-device coordinates every window shares, so they pass through unscaled.
  */
 internal class AwtDockHostWindow(
     val window: ComposeWindow,
-    var density: Float,
 ) : DockHostWindow {
     override fun contentBoundsOnScreen(): Rect? =
         runCatching {
             if (!window.isShowing) return null
             val content = window.contentPane
             val location = content.locationOnScreen
-            contentRectPx(location.x, location.y, content.width, content.height, density)
+            contentRect(location.x, location.y, content.width, content.height)
         }.getOrNull()
 
     override val isFocused: Boolean get() = window.isFocused
@@ -36,37 +33,35 @@ internal class AwtDockHostWindow(
     override fun moveContentTo(position: Offset) {
         runCatching {
             val content = window.contentPane.locationOnScreen
-            val frame = frameLocationFor(position, density, window.x, window.y, content.x, content.y)
+            val frame = frameLocationFor(position, window.x, window.y, content.x, content.y)
             window.setLocation(frame.x, frame.y)
         }
     }
 }
 
-/** A window's content at ([x], [y]), [width] by [height] in AWT's logical units, in pixels. */
-internal fun contentRectPx(
+/** A window's content at ([x], [y]), [width] by [height], as the docking system's bounds. */
+internal fun contentRect(
     x: Int,
     y: Int,
     width: Int,
     height: Int,
-    density: Float,
-): Rect = Rect(x * density, y * density, (x + width) * density, (y + height) * density)
+): Rect = Rect(x.toFloat(), y.toFloat(), (x + width).toFloat(), (y + height).toFloat())
 
 /**
- * Where to put a frame at ([frameX], [frameY]) whose content is at ([contentX], [contentY]),
- * all logical, so the content lands at [position] in pixels. The frame moves, not the content,
- * so it keeps its offset from the content - which also holds for a window with a title bar.
+ * Where to put a frame at ([frameX], [frameY]) whose content is at ([contentX], [contentY]) so
+ * the content lands at [position]. The frame moves, not the content, so it keeps its offset from
+ * the content - which also holds for a window with a title bar.
  */
 internal fun frameLocationFor(
     position: Offset,
-    density: Float,
     frameX: Int,
     frameY: Int,
     contentX: Int,
     contentY: Int,
 ): IntOffset =
     IntOffset(
-        frameX + (position.x / density - contentX).roundToInt(),
-        frameY + (position.y / density - contentY).roundToInt(),
+        frameX + (position.x - contentX).roundToInt(),
+        frameY + (position.y - contentY).roundToInt(),
     )
 
 /**
@@ -98,8 +93,6 @@ public fun FrameWindowScope.registerDockingWindow(
     state: DockState,
     windowId: WindowId = WindowId.MAIN,
 ) {
-    val density = LocalDensity.current.density
-    val host = remember(window) { AwtDockHostWindow(window, density) }
-    SideEffect { host.density = density }
+    val host = remember(window) { AwtDockHostWindow(window) }
     com.seanproctor.docking.window.registerDockingWindow(state, windowId, host)
 }

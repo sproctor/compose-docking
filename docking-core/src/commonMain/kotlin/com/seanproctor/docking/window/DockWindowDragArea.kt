@@ -118,7 +118,10 @@ private class DockWindowDragNode(
                     }
                     if (!moving && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         moving = true
-                        chase = state.hostWindow(windowId)?.contentBoundsOnScreen()?.let { WindowChase(it.topLeft, origin) }
+                        chase =
+                            state.hostWindow(windowId)?.contentBoundsOnScreen()?.let {
+                                WindowChase(it.topLeft, origin, density)
+                            }
                         // Only ever drive a session this gesture opened: one already running
                         // belongs to someone else, and cancelling it on the way out would end it.
                         docking = host.startWindowDrag(windowId, toWindow(change.position))
@@ -142,16 +145,18 @@ private class DockWindowDragNode(
 }
 
 /**
- * Where to move a window dragged by a point inside it, event by event, in screen pixels.
- * Moves land asynchronously, so the window's observed position can lag the one last asked for.
- * Each event's local position is relative to the observed position, so the pointer's movement
- * on screen is its local movement plus the window's observed movement since the last event.
- * That keeps the window under the pointer whether a move is still pending or has landed,
- * without counting one twice.
+ * Where to move a window dragged by a point inside it, event by event, in screen logical units;
+ * pointer positions arrive in the window's pixels, [density] of them to a unit. Moves land
+ * asynchronously, so the window's observed position can lag the one last asked for. Each
+ * event's local position is relative to the observed position, so the pointer's movement on
+ * screen is its local movement plus the window's observed movement since the last event. That
+ * keeps the window under the pointer whether a move is still pending or has landed, without
+ * counting one twice.
  */
 internal class WindowChase(
     start: Offset,
     pressPosition: Offset,
+    private val density: Float,
 ) {
     private var requested = start
     private var lastObserved = start
@@ -163,7 +168,7 @@ internal class WindowChase(
         observed: Offset?,
     ): Offset {
         val windowMoved = observed?.let { it - lastObserved } ?: Offset.Zero
-        requested += (local - lastLocal) + windowMoved
+        requested += (local - lastLocal) / density + windowMoved
         lastLocal = local
         if (observed != null) lastObserved = observed
         return requested

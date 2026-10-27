@@ -240,17 +240,24 @@ class DockingWindowHostTest {
     }
 
     // Tearing the last thing out of a floating window closes the window and its dock area goes
-    // with it; the preview still needs that window's density to place itself.
+    // with it; the torn-off window is still sized from that window's pixels.
     @Test
-    fun thePreviewKeepsTheDensityTheDragBeganWith() {
+    fun aTornOffWindowIsSizedWithTheDensityTheDragBeganWith() {
         val setup = setUp()
         val state = setup.state
         state.dragController.window(setup.floatingId)?.scope?.density = 2f
-        state.dragController.startDrag(DragSource.Header(B), positionInWindow = Offset(20f, 10f), windowId = setup.floatingId)
-
+        state.dragController.startDrag(
+            DragSource.Header(B),
+            positionInWindow = Offset(20f, 10f),
+            windowId = setup.floatingId,
+            sourceSize = androidx.compose.ui.geometry.Size(600f, 400f),
+        )
         state.dragController.unregisterWindow(setup.floatingId)
 
-        assertEquals(2f, assertNotNull(state.windowHost.dragPreview).density)
+        state.dragController.dropOutside()
+
+        val bounds = assertNotNull(state.layout.windowContaining(B)?.bounds)
+        assertEquals(300f to 200f, bounds.width to bounds.height, "600x400 px at 2x is 300x200")
     }
 
     // Desktop's KeyEvent factory is the one way to make a key event outside a window.
@@ -348,6 +355,24 @@ class DockingWindowHostTest {
         assertEquals(WindowId.MAIN, state.hoverAt(Offset(150f, 150f)))
     }
 
+    // Windows on monitors of different densities share one space: a window's pixels are turned
+    // into it with that window's own density, so a point dragged out of a 2x window lands on the
+    // 1x window that is really there.
+    @Test
+    fun windowsOfDifferentDensitiesShareOneSpace() {
+        val (state, floatingId) = twoWindows(floatingBounds = Rect(700f, 0f, 1000f, 200f))
+        state.dragController.window(floatingId)?.scope?.density = 2f
+
+        // 100 px left of the floating window's origin at 2x is 50 units: (650, 50), over main.
+        // Scaling the origin by the density too, as AWT's pixels used to be, would put the
+        // point at (1300, 50), past main's right edge at 800.
+        assertEquals(Offset(650f, 50f), state.dragController.toScreen(floatingId, Offset(-100f, 100f)))
+        assertEquals(Offset(-100f, 100f), state.dragController.fromScreen(floatingId, Offset(650f, 50f)))
+        state.dragController.startDrag(DragSource.Header(B), positionInWindow = Offset(20f, 20f), windowId = floatingId)
+        state.dragController.updateDrag(Offset(-100f, 100f), floatingId)
+        assertEquals(WindowId.MAIN, state.dragController.session?.hoveredWindow)
+    }
+
     @Test
     fun positionsMapThroughTheContentOrigin() {
         val (state, floatingId) = twoWindows()
@@ -369,37 +394,38 @@ class DockingWindowHostTest {
 }
 
 /**
- * A window chasing the pointer that drags it: the window's content starts at (100, 100),
- * grabbed at (20, 10) in it, so the pointer is at (120, 110) on screen. Wherever the pointer
- * goes, the window belongs at the pointer minus (20, 10).
+ * A window chasing the pointer that drags it, at density 2: the window's content starts at
+ * (100, 100), grabbed at (20, 10) px in it, so the pointer is at (110, 105) on screen. Wherever
+ * the pointer goes, the window belongs at the pointer minus (10, 5).
  */
 class WindowChaseTest {
     private val start = Offset(100f, 100f)
     private val press = Offset(20f, 10f)
 
-    private fun chase() = WindowChase(start, press)
+    private fun chase() = WindowChase(start, press, density = 2f)
 
     @Test
     fun theFirstMoveFollowsThePointerFromThePress() {
-        assertEquals(Offset(120f, 100f), chase().next(Offset(40f, 10f), observed = start))
+        // Pointer +20 px = +10 units, window not moved yet.
+        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = start))
     }
 
     @Test
     fun aMoveStillPendingIsNotCountedTwice() {
         val chase = chase()
         chase.next(Offset(40f, 10f), observed = start)
-        // The pointer moves another +20 before the first move lands: the event is still
-        // relative to the window at (100, 100), pointer on screen at (160, 110).
-        assertEquals(Offset(140f, 100f), chase.next(Offset(60f, 10f), observed = start))
+        // The pointer moves another +10 units before the first move lands: the event is still
+        // relative to the window at (100, 100), pointer on screen at (130, 105).
+        assertEquals(Offset(120f, 100f), chase.next(Offset(60f, 10f), observed = start))
     }
 
     @Test
     fun aMoveThatLandedIsCountedOnce() {
         val chase = chase()
         chase.next(Offset(40f, 10f), observed = start)
-        // The window is now at (120, 100) and the pointer has moved +20 more: it is at
-        // (160, 110) on screen, (40, 10) in the moved window.
-        assertEquals(Offset(140f, 100f), chase.next(Offset(40f, 10f), observed = Offset(120f, 100f)))
+        // The window is now at (110, 100) and the pointer has moved +10 units more: it is at
+        // (130, 105) on screen, (20, 5) units = (40, 10) px in the moved window.
+        assertEquals(Offset(120f, 100f), chase.next(Offset(40f, 10f), observed = Offset(110f, 100f)))
     }
 
     @Test
@@ -407,14 +433,13 @@ class WindowChaseTest {
         val chase = chase()
         chase.next(Offset(40f, 10f), observed = start)
         chase.next(Offset(60f, 10f), observed = start)
-        // Both moves land at once (window at (140, 100)); the pointer has not moved since,
-        // so in the window it is back at the press point.
-        assertEquals(Offset(140f, 100f), chase.next(press, observed = Offset(140f, 100f)))
+        // Both moves land at once (window at (120, 100)); the pointer has not moved since, so
+        // in the window it is back at the press point.
+        assertEquals(Offset(120f, 100f), chase.next(press, observed = Offset(120f, 100f)))
     }
 
     @Test
     fun anUnknownPositionTrustsThePointerAlone() {
-        val chase = chase()
-        assertEquals(Offset(120f, 100f), chase.next(Offset(40f, 10f), observed = null))
+        assertEquals(Offset(110f, 100f), chase().next(Offset(40f, 10f), observed = null))
     }
 }

@@ -175,7 +175,8 @@ DockDragPreviewWindow(state)  // the window that follows the pointer during a dr
   drag whatever has focus — a title bar outside the dock area does not take it.
 - **`registerDockingWindow(state, windowId, window)`** connects any OS window: implement
   `DockHostWindow` — where its content is on screen, whether it has focus, and how to move
-  it — and drags pass between windows. `FrameWindowScope.registerDockingWindow(state)` does
+  it, all in the toolkit's own logical screen units (don't scale them by density) — and drags
+  pass between windows, across monitors of different densities too. `FrameWindowScope.registerDockingWindow(state)` does
   this for a Compose Desktop window; `state.hostWindow(windowId)` gives it back to window
   buttons.
 - **Platform drag-and-drop**: where windows cannot see the pointer outside themselves

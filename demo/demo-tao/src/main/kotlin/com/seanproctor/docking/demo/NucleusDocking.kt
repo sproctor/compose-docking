@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -20,7 +19,6 @@ import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
@@ -54,24 +52,23 @@ import kotlin.math.roundToInt
 // application on a window toolkit of its own would: the library knows nothing of Nucleus.
 
 /**
- * A Nucleus window as the docking system sees it. Nucleus reports logical units, which the
- * window's density turns into the screen pixels drags are carried in.
+ * A Nucleus window as the docking system sees it. Nucleus reports logical screen units, the
+ * ones every window shares, so they pass through unscaled.
  */
 class NucleusHostWindow(
     val window: NucleusWindow,
-    var density: Float,
 ) : DockHostWindow {
     override fun contentBoundsOnScreen(): Rect? {
         if (!window.isPlaceable) return null
         val bounds = window.boundsOnScreen() ?: return null
-        return Rect(bounds.x * density, bounds.y * density, (bounds.x + bounds.width) * density, (bounds.y + bounds.height) * density)
+        return Rect(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
     }
 
     override val isFocused: Boolean get() = window.isFocused
 
     override fun moveContentTo(position: Offset) {
         // Undecorated, so the outer position is the content's.
-        window.unsafe.taoWindow?.setOuterPosition((position.x / density).toDouble(), (position.y / density).toDouble())
+        window.unsafe.taoWindow?.setOuterPosition(position.x.toDouble(), position.y.toDouble())
     }
 }
 
@@ -101,9 +98,7 @@ fun NucleusDecoratedWindowScope.NucleusDockArea(
     headerDragsWindow: Boolean = false,
 ) {
     val window = nucleusWindow
-    val density = LocalDensity.current.density
-    val host = remember(window) { NucleusHostWindow(window, density) }
-    SideEffect { host.density = density }
+    val host = remember(window) { NucleusHostWindow(window) }
     registerDockingWindow(state, windowId, host)
     if (window.isPlaceable) {
         DockArea(state, windowId, modifier, headerDragsWindow)
@@ -271,15 +266,14 @@ private fun NucleusApplicationScope.DragPreviewWindow(state: DockState) {
     val preview = host.dragPreview ?: return
     // Asked once a drag runs, when the main window is registered.
     if (state.nucleusWindow()?.isPlaceable != true) return
-    val density = preview.density
     val windowState =
         rememberWindowState(
-            position = previewPosition(preview.screenPosition, density),
+            position = previewPosition(preview.screenPosition),
             size = DragPreviewSize,
         )
-    LaunchedEffect(host, windowState, density) {
+    LaunchedEffect(host, windowState) {
         snapshotFlow { host.dragPreview?.screenPosition }.collect { position ->
-            if (position != null) windowState.position = previewPosition(position, density)
+            if (position != null) windowState.position = previewPosition(position)
         }
     }
     DecoratedWindow(
@@ -301,7 +295,4 @@ private fun NucleusApplicationScope.DragPreviewWindow(state: DockState) {
     }
 }
 
-private fun previewPosition(
-    screen: Offset,
-    density: Float,
-): WindowPosition.Absolute = WindowPosition.Absolute((screen.x / density + 14).dp, (screen.y / density + 14).dp)
+private fun previewPosition(screen: Offset): WindowPosition.Absolute = WindowPosition.Absolute((screen.x + 14).dp, (screen.y + 14).dp)

@@ -1246,10 +1246,8 @@ final class com.seanproctor.docking.window/DockingWindowHost { // com.seanprocto
 }
 
 final class com.seanproctor.docking.window/DragPreviewInfo { // com.seanproctor.docking.window/DragPreviewInfo|null[0]
-    constructor <init>(androidx.compose.ui.geometry/Offset, kotlin/Float, com.seanproctor.docking.model/DockableId) // com.seanproctor.docking.window/DragPreviewInfo.<init>|<init>(androidx.compose.ui.geometry.Offset;kotlin.Float;com.seanproctor.docking.model.DockableId){}[0]
+    constructor <init>(androidx.compose.ui.geometry/Offset, com.seanproctor.docking.model/DockableId) // com.seanproctor.docking.window/DragPreviewInfo.<init>|<init>(androidx.compose.ui.geometry.Offset;com.seanproctor.docking.model.DockableId){}[0]
 
-    final val density // com.seanproctor.docking.window/DragPreviewInfo.density|{}density[0]
-        final fun <get-density>(): kotlin/Float // com.seanproctor.docking.window/DragPreviewInfo.density.<get-density>|<get-density>(){}[0]
     final val dockableId // com.seanproctor.docking.window/DragPreviewInfo.dockableId|{}dockableId[0]
         final fun <get-dockableId>(): com.seanproctor.docking.model/DockableId // com.seanproctor.docking.window/DragPreviewInfo.dockableId.<get-dockableId>|<get-dockableId>(){}[0]
     final val screenPosition // com.seanproctor.docking.window/DragPreviewInfo.screenPosition|{}screenPosition[0]

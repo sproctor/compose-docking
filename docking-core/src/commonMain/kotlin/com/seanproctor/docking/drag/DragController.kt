@@ -69,9 +69,10 @@ internal class DragSession(
      */
     val movesWindow: Boolean = false,
     /**
-     * [originWindow]'s density as the drag began. Kept here because the window can close
-     * mid-drag - tearing out the last thing in a floating window empties it - and with it
-     * goes the dock area that knew the density.
+     * [originWindow]'s density as the drag began, for sizing a torn-off window from the
+     * dragged panel's pixels. Kept here because the window can close mid-drag - tearing out
+     * the last thing in a floating window empties it - and with it goes the dock area that
+     * knew the density.
      */
     val originDensity: Float = 1f,
 ) {
@@ -147,15 +148,24 @@ internal class DragController(private val state: DockState) {
      */
     private fun screenBounds(): Map<WindowId, Rect?> = hostWindows.mapValues { it.value.contentBoundsOnScreen() }
 
-    /** Where [windowId]'s root origin is in the shared space; null maps positions unchanged. */
+    /** Where [windowId]'s root origin is in the shared space; null when it cannot say. */
     private fun originOf(windowId: WindowId, bounds: Map<WindowId, Rect?>? = null): Offset? =
         (if (bounds != null) bounds[windowId] else hostWindows[windowId]?.contentBoundsOnScreen())?.topLeft
 
+    /** Pixels of [windowId]'s Compose root per unit of the shared space. */
+    private fun densityOf(windowId: WindowId): Float = windows[windowId]?.scope?.density ?: 1f
+
+    /**
+     * [position] in [windowId]'s root, in pixels, as a point in the shared space: screen
+     * coordinates in the window toolkit's logical units, which every window shares whatever
+     * the density of the monitor it is on. A window that cannot say where it is maps from its
+     * own origin, so its points are only ever compared with its own.
+     */
     internal fun toScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
-        originOf(windowId, bounds)?.let { position + it } ?: position
+        (originOf(windowId, bounds) ?: Offset.Zero) + position / densityOf(windowId)
 
     internal fun fromScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
-        originOf(windowId, bounds)?.let { position - it } ?: position
+        (position - (originOf(windowId, bounds) ?: Offset.Zero)) * densityOf(windowId)
 
     internal fun registeredWindows(): List<RegisteredWindow> = windows.values.toList()
 
@@ -245,8 +255,9 @@ internal class DragController(private val state: DockState) {
     private fun updateDragInWindow(positionInWindow: Offset, windowId: WindowId) {
         val s = session ?: return
         val hovered = windows[windowId] ?: return
-        s.screenPosition = positionInWindow
-        dragListener?.onDragMoved(positionInWindow)
+        val screen = toScreen(windowId, positionInWindow)
+        s.screenPosition = screen
+        dragListener?.onDragMoved(screen)
         if (s.payload.options.limitedToWindow && windowId != s.originWindow) {
             s.hoveredWindow = windowId
             s.handles = emptyList()
@@ -405,7 +416,7 @@ internal class DragController(private val state: DockState) {
         }
         if (bounds[from] == null) {
             if (from == exclude) return null
-            return from.takeIf { windows[from]?.scope?.bounds?.rootBounds?.contains(screen) == true }
+            return from.takeIf { windows[from]?.scope?.bounds?.rootBounds?.contains(fromScreen(from, screen, bounds)) == true }
         }
         val hits = hostWindows.entries.filter { (id, _) ->
             id != exclude && id in windows && bounds[id]?.contains(screen) == true
@@ -602,8 +613,9 @@ internal class DragController(private val state: DockState) {
                 state.moveToNewWindow(
                     primary,
                     WindowBounds(
-                        x = target.screenPosition.x / originDensity - SPAWN_CURSOR_OFFSET_X_DP,
-                        y = target.screenPosition.y / originDensity - SPAWN_CURSOR_OFFSET_Y_DP,
+                        // The shared space is already in the units window bounds are kept in.
+                        x = target.screenPosition.x - SPAWN_CURSOR_OFFSET_X_DP,
+                        y = target.screenPosition.y - SPAWN_CURSOR_OFFSET_Y_DP,
                         width = sizeDp?.width ?: DEFAULT_FLOAT_WIDTH_DP,
                         height = sizeDp?.height ?: DEFAULT_FLOAT_HEIGHT_DP,
                     ),

@@ -14,13 +14,16 @@ import com.seanproctor.docking.state.DockState
  * a drag pass from one window to another, and lets [dockWindowDragArea] move a window and dock
  * it back.
  *
- * Positions are in screen pixels: a window's content on screen is its Compose root, so a
- * position in that root plus the content's top-left is the same point in every window. A
- * window toolkit that reports logical units multiplies them by the window's density.
+ * Positions here are screen coordinates in the window toolkit's logical units - the units of a
+ * Compose `WindowState` position, which AWT and Nucleus both report - and every window shares
+ * them, whatever the density of the monitor it is on. Don't scale them by the window's density:
+ * the docking system turns positions in a window's Compose root into these with that dock
+ * area's own density, which is what keeps windows on monitors of different densities in one
+ * space.
  */
 public interface DockHostWindow {
     /**
-     * Where the window's Compose content is on screen, in pixels, or null while it is not on
+     * Where the window's Compose content is on screen, in logical units, or null while it is not on
      * screen or where windows cannot see their own position (native Wayland, where the
      * compositor alone places them). A window without bounds is never found under the
      * pointer; drags into it need the platform's drag-and-drop session (see
@@ -32,7 +35,7 @@ public interface DockHostWindow {
     public val isFocused: Boolean get() = false
 
     /**
-     * Moves the window so its content's top-left lands at [position] on screen, in pixels, as
+     * Moves the window so its content's top-left lands at [position] on screen, in logical units, as
      * [dockWindowDragArea] drags it. The move may land after this returns; the drag allows for
      * that. The default does nothing, for a window the docking system may not move.
      */
