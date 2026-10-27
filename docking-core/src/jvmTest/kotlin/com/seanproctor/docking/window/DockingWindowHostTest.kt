@@ -416,15 +416,15 @@ class DockingWindowHostTest {
 }
 
 /**
- * A window chasing the pointer that drags it, at density 2: the window's content starts at
- * (100, 100), grabbed at (20, 10) px in it, so the pointer is at (110, 105) on screen. Wherever
- * the pointer goes, the window belongs at the pointer minus (10, 5).
+ * A window chasing the pointer that drags it, at density 2 unless said otherwise: the window's
+ * content starts at (100, 100), grabbed at (20, 10) px in it, so the pointer is at (110, 105) on
+ * screen. Wherever the pointer goes, the window belongs at the pointer minus (10, 5).
  */
 class WindowChaseTest {
     private val start = Offset(100f, 100f)
     private val press = Offset(20f, 10f)
 
-    private fun chase() = WindowChase(start, press)
+    private fun chase() = WindowChase(start, press, pressDensity = 2f)
 
     @Test
     fun theFirstMoveFollowsThePointerFromThePress() {
@@ -460,12 +460,16 @@ class WindowChaseTest {
         assertEquals(Offset(120f, 100f), chase.next(press, observed = Offset(120f, 100f), density = 2f))
     }
 
-    // Dragged onto a 1x monitor mid-drag: from there on, pixels are one to a unit.
+    // Dragged onto a 1x monitor mid-drag. The window has moved to (110, 100) and now counts
+    // one pixel to a unit, so the grab point, 10 units in, is 10 px where it was 20; the pointer
+    // moves +10 units more, to (130, 105) on screen, which is 20 px in the window. The window
+    // belongs at (120, 100) - comparing 20 px at 1x with 40 px at 2x as raw pixels would put
+    // it at (100, 100), 20 units behind the pointer.
     @Test
-    fun aChangeOfDensityMidDragIsFollowed() {
+    fun aChangeOfDensityMidDragKeepsTheWindowUnderThePointer() {
         val chase = chase()
         chase.next(Offset(40f, 10f), observed = start, density = 2f)
-        assertEquals(Offset(130f, 100f), chase.next(Offset(60f, 10f), observed = start, density = 1f))
+        assertEquals(Offset(120f, 100f), chase.next(Offset(20f, 5f), observed = Offset(110f, 100f), density = 1f))
     }
 
     @Test

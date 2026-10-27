@@ -118,7 +118,8 @@ private class DockWindowDragNode(
                     }
                     if (!moving && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         moving = true
-                        chase = state.hostWindow(windowId)?.contentBoundsOnScreen()?.let { WindowChase(it.topLeft, origin) }
+                        val window = state.hostWindow(windowId)
+                        chase = window?.contentBoundsOnScreen()?.let { WindowChase(it.topLeft, origin, window.density ?: density) }
                         // Only ever drive a session this gesture opened: one already running
                         // belongs to someone else, and cancelling it on the way out would end it.
                         docking = host.startWindowDrag(windowId, toWindow(change.position))
@@ -145,34 +146,38 @@ private class DockWindowDragNode(
 }
 
 /**
- * Where to move a window dragged by a point inside it, event by event, in screen logical units;
- * pointer positions arrive in the window's pixels, `density` of them to a unit. Moves land
- * asynchronously, so the window's observed position can lag the one last asked for. Each
- * event's local position is relative to the observed position, so the pointer's movement on
- * screen is its local movement plus the window's observed movement since the last event. That
- * keeps the window under the pointer whether a move is still pending or has landed, without
- * counting one twice.
+ * Where to move a window dragged by a point inside it, event by event, in screen logical units.
+ * Pointer positions arrive in the window's pixels, at the density the window has as each one
+ * arrives - a window dragged onto another monitor changes it, and the grab point is then
+ * counted in the new pixels - so each is turned into units with its own density before any
+ * two are compared. Moves land asynchronously, so the window's observed position can lag the
+ * one last asked for. Each event's local position is relative to the observed position, so the
+ * pointer's movement on screen is its local movement plus the window's observed movement since
+ * the last event. That keeps the window under the pointer whether a move is still pending or
+ * has landed, without counting one twice.
  */
 internal class WindowChase(
     start: Offset,
     pressPosition: Offset,
+    pressDensity: Float,
 ) {
     private var requested = start
     private var lastObserved = start
-    private var lastLocal = pressPosition
+    private var lastLocal = pressPosition / pressDensity
 
     /**
-     * The pointer is at [local] in the window, which is observed at [observed] (null: unknown)
-     * and has [density] pixels to a unit now.
+     * The pointer is at [local] pixels in the window, which is observed at [observed] (null:
+     * unknown) and has [density] pixels to a unit now.
      */
     fun next(
         local: Offset,
         observed: Offset?,
         density: Float,
     ): Offset {
+        val localUnits = local / density
         val windowMoved = observed?.let { it - lastObserved } ?: Offset.Zero
-        requested += (local - lastLocal) / density + windowMoved
-        lastLocal = local
+        requested += (localUnits - lastLocal) + windowMoved
+        lastLocal = localUnits
         if (observed != null) lastObserved = observed
         return requested
     }
