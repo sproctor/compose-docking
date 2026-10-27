@@ -6,7 +6,6 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import com.seanproctor.docking.drag.DragListener
 import com.seanproctor.docking.drag.DragSource
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockableId
@@ -134,7 +133,7 @@ public class DockingWindowHost internal constructor(private val state: DockState
      * [claimDragPreview] is held - and the dock areas leave out their in-window ghost card.
      */
     public val drawsDragPreview: Boolean
-        get() = previewClaims > 0
+        get() = controller.previewClaims > 0
 
     /**
      * Takes over drawing the drag preview, for a window of the application's own that follows
@@ -145,26 +144,17 @@ public class DockingWindowHost internal constructor(private val state: DockState
      * preview there can be.
      */
     public fun claimDragPreview(): DragPreviewClaim {
-        previewClaims++
-        controller.dragListener = ownPreviewListener
+        controller.previewClaims++
         return object : DragPreviewClaim {
             private var released = false
 
             override fun release() {
                 if (released) return
                 released = true
-                previewClaims--
-                if (previewClaims == 0 && controller.dragListener === ownPreviewListener) controller.dragListener = null
+                controller.previewClaims--
             }
         }
     }
-
-    private var previewClaims = 0
-
-    private val ownPreviewListener =
-        object : DragListener {
-            override val showsOwnPreview: Boolean get() = true
-        }
 
     /**
      * Cancels the running drag, putting everything back, when [event] is Escape going down;

@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onRoot
@@ -315,4 +317,31 @@ class DragHandoverTest {
     fun noDropIsTakenWithoutADockingDrag() {
         assertFalse(split().windowHost.dropInWindow(Offset(10f, 10f), WindowId.MAIN))
     }
+
+    // At 2x a window's pixels are two to a unit of the shared space: the hover is kept in units,
+    // and a panel torn off by the platform lands under the pointer, not twice as far away.
+    @Test
+    fun aPlatformDragAtDensityTwoKeepsUnits() =
+        runComposeUiTest {
+            val state = split()
+            val handover = RecordingHandover()
+            setContent {
+                CompositionLocalProvider(LocalDensity provides Density(2f), LocalDockingDragHandover provides handover) {
+                    DockArea(state, modifier = Modifier.fillMaxSize())
+                }
+            }
+            waitForIdle()
+            assertTrue(handover.grips.getValue("header:b").begin(Offset(5f, 5f)))
+            waitForIdle()
+
+            state.windowHost.hoverInWindow(Offset(300f, 200f), WindowId.MAIN)
+            assertEquals(Offset(150f, 100f), assertNotNull(state.dragController.session).screenPosition)
+
+            state.windowHost.exitWindow(WindowId.MAIN)
+            state.windowHost.endPlatformDrag()
+            waitForIdle()
+
+            val bounds = assertNotNull(state.layout.windowContaining(B)?.bounds)
+            assertEquals(150f - 40f to 100f - 12f, bounds.x to bounds.y, "the cursor offset from the pointer, in units")
+        }
 }

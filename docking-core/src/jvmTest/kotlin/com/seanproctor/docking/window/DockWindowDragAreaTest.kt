@@ -220,6 +220,29 @@ class DockWindowDragAreaTest {
         assertEquals(Offset(600f, 190f), window.moves.last())
     }
 
+    // On a 2x window the pointer covers two pixels per unit of screen: the window moves by half
+    // the pixels, or it would run away from the pointer.
+    @Test
+    fun theWindowFollowsThePointerAtDensityTwo() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        val window = FakeHostWindow(Rect(600f, 100f, 1000f, 400f), landsMoves = false, density = 2f)
+        state.dragController.registerHostWindow(floatingId, window)
+        setContent {
+            Box(Modifier.size(200.dp).dockWindowDragArea(state, floatingId)) {
+                BasicText("header")
+            }
+        }
+
+        onNodeWithText("header").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(6) { moveTo(center + Offset(0f, 15f * (it + 1))) }
+        }
+        waitForIdle()
+
+        assertEquals(Offset(600f, 145f), window.moves.last())
+    }
+
     // A title bar the application draws over a split: nowhere to dock it, but it still moves.
     @Test
     fun aWindowThatCannotDockIsStillMoved() = runComposeUiTest {

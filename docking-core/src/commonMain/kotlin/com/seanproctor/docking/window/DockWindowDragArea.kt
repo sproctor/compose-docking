@@ -118,9 +118,11 @@ private class DockWindowDragNode(
                     }
                     if (!moving && (change.position - origin).getDistance() > viewConfiguration.touchSlop) {
                         moving = true
+                        val window = state.hostWindow(windowId)
                         chase =
-                            state.hostWindow(windowId)?.contentBoundsOnScreen()?.let {
-                                WindowChase(it.topLeft, origin, density)
+                            window?.contentBoundsOnScreen()?.let {
+                                // The window's own scale: LocalDensity may be an app's zoom.
+                                WindowChase(it.topLeft, origin, window.density)
                             }
                         // Only ever drive a session this gesture opened: one already running
                         // belongs to someone else, and cancelling it on the way out would end it.

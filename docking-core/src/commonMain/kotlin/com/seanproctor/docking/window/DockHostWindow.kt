@@ -17,9 +17,8 @@ import com.seanproctor.docking.state.DockState
  * Positions here are screen coordinates in the window toolkit's logical units - the units of a
  * Compose `WindowState` position, which AWT and Nucleus both report - and every window shares
  * them, whatever the density of the monitor it is on. Don't scale them by the window's density:
- * the docking system turns positions in a window's Compose root into these with that dock
- * area's own density, which is what keeps windows on monitors of different densities in one
- * space.
+ * the docking system turns positions in a window's Compose root into these with [density],
+ * which is what keeps windows on monitors of different densities in one space.
  */
 public interface DockHostWindow {
     /**
@@ -30,6 +29,14 @@ public interface DockHostWindow {
      * [DockingDragHandover]).
      */
     public fun contentBoundsOnScreen(): Rect?
+
+    /**
+     * Pixels of the window's Compose content per logical unit: the scale of the monitor it is
+     * on, as the window toolkit applies it (AWT's graphics configuration transform, Nucleus's
+     * scale factor). The window's own, not `LocalDensity`, which an application may override -
+     * for a UI zoom, say - without changing how many pixels the window has.
+     */
+    public val density: Float
 
     /** Whether the window has input focus: where windows overlap, the focused one is on top. */
     public val isFocused: Boolean get() = false

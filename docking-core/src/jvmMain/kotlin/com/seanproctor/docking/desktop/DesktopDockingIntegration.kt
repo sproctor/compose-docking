@@ -28,6 +28,10 @@ internal class AwtDockHostWindow(
             contentRect(location.x, location.y, content.width, content.height)
         }.getOrNull()
 
+    // Compose Desktop renders a window at its graphics configuration's scale.
+    override val density: Float
+        get() = window.graphicsConfiguration?.defaultTransform?.scaleX?.toFloat() ?: 1f
+
     override val isFocused: Boolean get() = window.isFocused
 
     override fun moveContentTo(position: Offset) {

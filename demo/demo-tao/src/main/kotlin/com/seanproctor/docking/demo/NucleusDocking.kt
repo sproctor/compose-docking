@@ -54,6 +54,11 @@ import kotlin.math.roundToInt
 /**
  * A Nucleus window as the docking system sees it. Nucleus reports logical screen units, the
  * ones every window shares, so they pass through unscaled.
+ *
+ * Nucleus gives only the outer bounds, decorations included, so they stand for the content's:
+ * true for its windows, whose title bars are drawn in Compose inside the content. The read and
+ * the move both use the outer position, so a window dragged by its title bar follows the
+ * pointer either way.
  */
 class NucleusHostWindow(
     val window: NucleusWindow,
@@ -64,10 +69,11 @@ class NucleusHostWindow(
         return Rect(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
     }
 
+    override val density: Float get() = window.unsafe.taoWindow?.scaleFactor ?: 1f
+
     override val isFocused: Boolean get() = window.isFocused
 
     override fun moveContentTo(position: Offset) {
-        // Undecorated, so the outer position is the content's.
         window.unsafe.taoWindow?.setOuterPosition(position.x.toDouble(), position.y.toDouble())
     }
 }

@@ -37,6 +37,7 @@ internal class FakeHostWindow(
     var bounds: Rect?,
     override var isFocused: Boolean = false,
     private val landsMoves: Boolean = true,
+    override var density: Float = 1f,
 ) : DockHostWindow {
     val moves = mutableListOf<Offset>()
 
@@ -216,11 +217,11 @@ class DockingWindowHostTest {
 
         val claim = state.windowHost.claimDragPreview()
         assertTrue(state.windowHost.drawsDragPreview)
-        assertTrue(state.dragController.dragListener?.showsOwnPreview == true)
+        assertEquals(1, state.dragController.previewClaims)
 
         claim.release()
         assertFalse(state.windowHost.drawsDragPreview)
-        assertNull(state.dragController.dragListener)
+        assertEquals(0, state.dragController.previewClaims)
     }
 
     // A preview window going away must not switch off one that is still drawing - the in-window
@@ -245,7 +246,7 @@ class DockingWindowHostTest {
     fun aTornOffWindowIsSizedWithTheDensityTheDragBeganWith() {
         val setup = setUp()
         val state = setup.state
-        state.dragController.window(setup.floatingId)?.scope?.density = 2f
+        setup.floating.density = 2f
         state.dragController.startDrag(
             DragSource.Header(B),
             positionInWindow = Offset(20f, 10f),
@@ -361,7 +362,7 @@ class DockingWindowHostTest {
     @Test
     fun windowsOfDifferentDensitiesShareOneSpace() {
         val (state, floatingId) = twoWindows(floatingBounds = Rect(700f, 0f, 1000f, 200f))
-        state.dragController.window(floatingId)?.scope?.density = 2f
+        (state.hostWindow(floatingId) as FakeHostWindow).density = 2f
 
         // 100 px left of the floating window's origin at 2x is 50 units: (650, 50), over main.
         // Scaling the origin by the density too, as AWT's pixels used to be, would put the
@@ -371,6 +372,17 @@ class DockingWindowHostTest {
         state.dragController.startDrag(DragSource.Header(B), positionInWindow = Offset(20f, 20f), windowId = floatingId)
         state.dragController.updateDrag(Offset(-100f, 100f), floatingId)
         assertEquals(WindowId.MAIN, state.dragController.session?.hoveredWindow)
+    }
+
+    // An app zooming its UI overrides LocalDensity around the dock area; the window still has
+    // the pixels its monitor gives it, and those are what pointer positions are counted in.
+    @Test
+    fun theWindowsOwnScaleWinsOverTheDockAreasDensity() {
+        val (state, floatingId) = twoWindows(floatingBounds = Rect(700f, 0f, 1000f, 200f))
+        (state.hostWindow(floatingId) as FakeHostWindow).density = 2f
+        state.dragController.window(floatingId)?.scope?.density = 2.5f
+
+        assertEquals(Offset(750f, 50f), state.dragController.toScreen(floatingId, Offset(100f, 100f)))
     }
 
     @Test
