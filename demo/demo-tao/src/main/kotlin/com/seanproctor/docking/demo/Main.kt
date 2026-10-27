@@ -30,8 +30,6 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.state.rememberDockState
-import com.seanproctor.docking.tao.TaoFloatingDockWindows
-import com.seanproctor.docking.tao.TaoDockArea
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.window.TitleBar
@@ -44,7 +42,8 @@ import org.jetbrains.jewel.ui.component.Text
 
 /**
  * The docking demo on Nucleus's Tao windows: no AWT in the process. The same panels as the
- * Jewel demo; floating windows and the drag preview come from `docking-tao`.
+ * Jewel demo; the windows are the application's, connected to the docking system through its
+ * window API in NucleusDocking.kt - the library itself knows nothing of Nucleus.
  *
  *     ./gradlew :demo:demo-tao:run
  *
@@ -94,13 +93,13 @@ fun main(args: Array<String>) {
                             }
                         }
                         Box(Modifier.weight(1f)) {
-                            TaoDockArea(state, modifier = Modifier.fillMaxSize())
+                            NucleusDockArea(state, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
             }
             JewelDocking {
-                TaoFloatingDockWindows(state)
+                NucleusFloatingDockWindows(state)
             }
         }
     }

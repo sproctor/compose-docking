@@ -1,5 +1,3 @@
-@file:OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
-
 package com.seanproctor.docking.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,19 +6,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.onNodeWithText
+import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.WindowId
-import com.seanproctor.docking.spi.DockDragGrip
-import com.seanproctor.docking.spi.DockingDragHandover
-import com.seanproctor.docking.spi.LocalDockingDragHandover
-import com.seanproctor.docking.spi.windowHost
+import com.seanproctor.docking.window.DockDragGrip
+import com.seanproctor.docking.window.DockingDragHandover
+import com.seanproctor.docking.window.LocalDockingDragHandover
+import com.seanproctor.docking.window.windowHost
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.tree.windowContaining
@@ -140,8 +140,9 @@ class DragHandoverTest {
 
             // With B undocked, A fills the window and its Center handle sits at the window's centre.
             val centre = onRoot().fetchSemanticsNode().boundsInRoot.center
-            state.windowHost.updateDragInWindow(centre, WindowId.MAIN)
-            state.windowHost.drop()
+            assertTrue(state.windowHost.dropInWindow(centre, WindowId.MAIN))
+            assertNotNull(state.dragController.session, "the drop only records; the end applies it")
+            state.windowHost.endPlatformDrag()
             waitForIdle()
 
             val tabs = assertIs<DockNode.Tabs>(state.layout.mainWindow.root)
@@ -149,7 +150,7 @@ class DragHandoverTest {
         }
 
     @Test
-    fun aReleaseOffEveryWindowTearsThePanelOff() =
+    fun aDragEndingWithNoDropTearsThePanelOff() =
         runComposeUiTest {
             val state = split()
             val handover = RecordingHandover()
@@ -161,7 +162,7 @@ class DragHandoverTest {
             waitForIdle()
             handover.grips.getValue("header:b").begin(Offset(5f, 5f))
 
-            state.windowHost.dropOutside()
+            state.windowHost.endPlatformDrag()
             waitForIdle()
 
             assertNull(state.dragController.session)
@@ -214,4 +215,104 @@ class DragHandoverTest {
             grip.endLocal(released = false, position = null)
             assertNull(state.dragController.session)
         }
+
+    /** Shows [state] under a recording handover and begins dragging B's header. */
+    private fun ComposeUiTest.beginDraggingB(state: DockState) {
+        val handover = RecordingHandover()
+        setContent {
+            CompositionLocalProvider(LocalDockingDragHandover provides handover) {
+                DockArea(state, modifier = Modifier.fillMaxSize())
+            }
+        }
+        waitForIdle()
+        assertTrue(handover.grips.getValue("header:b").begin(Offset(5f, 5f)))
+        waitForIdle()
+    }
+
+    private fun ComposeUiTest.centre(): Offset = onRoot().fetchSemanticsNode().boundsInRoot.center
+
+    private fun DockState.assertTabbedWithA() {
+        val tabs = assertIs<DockNode.Tabs>(layout.mainWindow.root)
+        assertEquals(listOf(A, B), tabs.tabs.map { it.dockableId })
+    }
+
+    // Platforms tell the targets the pointer left as the session winds down, after the drop.
+    @Test
+    fun leavingAfterTheDropDoesNotTearOff() =
+        runComposeUiTest {
+            val state = split()
+            beginDraggingB(state)
+
+            state.windowHost.dropInWindow(centre(), WindowId.MAIN)
+            state.windowHost.exitWindow(WindowId.MAIN)
+            state.windowHost.endPlatformDrag()
+            waitForIdle()
+
+            state.assertTabbedWithA()
+        }
+
+    @Test
+    fun leavingEveryWindowThenEndingTearsOff() =
+        runComposeUiTest {
+            val state = split()
+            beginDraggingB(state)
+
+            state.windowHost.hoverInWindow(centre(), WindowId.MAIN)
+            state.windowHost.exitWindow(WindowId.MAIN)
+            state.windowHost.endPlatformDrag()
+            waitForIdle()
+
+            val window = assertNotNull(state.layout.windowContaining(B))
+            assertTrue(window.id != WindowId.MAIN, "B is in a window of its own")
+        }
+
+    // Entering one window and leaving another can arrive in either order; leaving the window
+    // the pointer already moved on from must not lose the hover over the one it is in.
+    @Test
+    fun leavingAWindowNoLongerHoveredKeepsTheHover() =
+        runComposeUiTest {
+            val state = split()
+            beginDraggingB(state)
+
+            state.windowHost.hoverInWindow(centre(), WindowId.MAIN)
+            state.windowHost.exitWindow(WindowId("elsewhere"))
+
+            val session = assertNotNull(state.dragController.session)
+            assertEquals(WindowId.MAIN, session.hoveredWindow)
+            assertIs<DropTarget.OnDockable>(session.target, "still aimed at A")
+        }
+
+    @Test
+    fun anUnknownPositionLeavesTheHoverAsItWas() =
+        runComposeUiTest {
+            val state = split()
+            beginDraggingB(state)
+
+            state.windowHost.hoverInWindow(centre(), WindowId.MAIN)
+            state.windowHost.hoverInWindow(Offset.Unspecified, WindowId.MAIN)
+            state.windowHost.dropInWindow(Offset.Unspecified, WindowId.MAIN)
+            state.windowHost.endPlatformDrag()
+            waitForIdle()
+
+            state.assertTabbedWithA()
+        }
+
+    @Test
+    fun aCancelledDragPutsThePanelBack() =
+        runComposeUiTest {
+            val state = split()
+            beginDraggingB(state)
+
+            state.windowHost.cancel()
+            waitForIdle()
+
+            assertFalse(state.windowHost.isDragging)
+            assertTrue(state.isDocked(B))
+            assertEquals(1, state.layout.windows.size, "no window was torn off")
+        }
+
+    @Test
+    fun noDropIsTakenWithoutADockingDrag() {
+        assertFalse(split().windowHost.dropInWindow(Offset(10f, 10f), WindowId.MAIN))
+    }
 }

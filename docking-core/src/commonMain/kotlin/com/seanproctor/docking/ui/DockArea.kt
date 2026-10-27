@@ -56,6 +56,7 @@ import com.seanproctor.docking.spi.TabPlacement
 import com.seanproctor.docking.spi.TabStripModel
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockableSpec
+import com.seanproctor.docking.window.dockWindowDragArea
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -90,21 +91,9 @@ public val LocalDockWindow: ProvidableCompositionLocal<DockWindowInfo> =
 @Immutable
 public class DockWindowInfo(
     public val windowId: WindowId,
-    /** True in one of [com.seanproctor.docking.desktop.FloatingDockWindows]' windows. */
+    /** True in a floating window: one the layout holds besides the main window. */
     public val isFloating: Boolean,
 )
-
-/**
- * Wraps the header of a window's lone dockable so dragging it moves the window - and,
- * released over another dock area, docks the panel there. Provided by the desktop
- * floating-window code, which is where a window to move exists.
- *
- * Null everywhere else, which is how a header knows to keep its own drag gesture: a main
- * window's header tears its panel out, a floating one's carries the whole window.
- */
-internal val LocalWindowMoveHandle:
-    ProvidableCompositionLocal<(@Composable (@Composable () -> Unit) -> Unit)?> =
-    staticCompositionLocalOf { null }
 
 /**
  * Renders one window's docking layout: the tree of splits, tab groups and dockables,
@@ -112,12 +101,19 @@ internal val LocalWindowMoveHandle:
  *
  * Call once per window - the main window and each floating window - with that window's
  * [windowId]. Dockable content and metadata come from [DockState.registry].
+ *
+ * [headerDragsWindow] is for a floating window without a title bar: the header of the one
+ * dockable it holds then stands in for one, dragging the whole window
+ * ([com.seanproctor.docking.window.dockWindowDragArea]) instead of tearing the panel out of
+ * it. Ignored in the main window, and while the window holds anything but one dockable, since
+ * no one header speaks for it then.
  */
 @Composable
 public fun DockArea(
     state: DockState,
     windowId: WindowId = WindowId.MAIN,
     modifier: Modifier = Modifier,
+    headerDragsWindow: Boolean = false,
 ) {
     val window = state.layout.window(windowId) ?: return
     val scope = remember(state, windowId) { DockAreaScope(state, windowId) }
@@ -144,7 +140,12 @@ public fun DockArea(
                     // The lone dockable of a window is the one whose header stands where a
                     // title bar would, so it is the one that gets to drag the window.
                     if (root is DockNode.Leaf) {
-                        scope.RenderLeaf(root, showHeader = true, Modifier.fillMaxSize(), headerMovesWindow = true)
+                        scope.RenderLeaf(
+                            root,
+                            showHeader = true,
+                            Modifier.fillMaxSize(),
+                            headerMovesWindow = headerDragsWindow && window.kind == WindowKind.Floating,
+                        )
                     } else {
                         scope.RenderNode(root, Modifier.fillMaxSize())
                     }
@@ -222,8 +223,8 @@ internal fun DockAreaScope.RenderLeaf(
     modifier: Modifier,
     /**
      * Whether this leaf's header doubles as the window's title bar, dragging the window
-     * rather than the dockable. True only for the one dockable a window holds, and a no-op
-     * outside an undecorated floating window - see [LocalWindowMoveHandle].
+     * rather than the dockable: the one dockable of a floating window whose [DockArea] was
+     * asked to.
      */
     headerMovesWindow: Boolean = false,
 ) {
@@ -252,14 +253,17 @@ internal fun DockAreaScope.RenderLeaf(
             renderer.MissingDockable(leaf.dockableId, Modifier.weight(1f).fillMaxWidth())
         } else {
             if (showHeader) {
-                val moveHandle = if (headerMovesWindow) LocalWindowMoveHandle.current else null
                 val header = @Composable {
                     renderer.DockableHeader(
-                        buildHeaderModel(spec, dragsWindow = moveHandle != null),
+                        buildHeaderModel(spec, dragsWindow = headerMovesWindow),
                         Modifier.fillMaxWidth(),
                     )
                 }
-                if (moveHandle != null) moveHandle(header) else header()
+                if (headerMovesWindow) {
+                    Box(Modifier.dockWindowDragArea(state, windowId)) { header() }
+                } else {
+                    header()
+                }
             }
             DockableContentBox(spec.id, Modifier.weight(1f).fillMaxWidth())
         }
@@ -401,8 +405,8 @@ private fun selectedDockableOf(node: DockNode.Tabs): DockableId = node.selectedT
 internal fun DockAreaScope.buildHeaderModel(
     spec: DockableSpec,
     /**
-     * Whether the window-move handle around this header owns its drag. Two drag gestures
-     * on one header would race - the header's own starts a tear-out, the handle's moves
+     * Whether the window drag area around this header owns its drag. Two drag gestures
+     * on one header would race - the header's own starts a tear-out, the area's moves
      * the window - and the header's, being the inner one, would win every time.
      */
     dragsWindow: Boolean = false,

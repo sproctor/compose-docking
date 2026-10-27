@@ -1,5 +1,3 @@
-@file:OptIn(com.seanproctor.docking.spi.DockingWindowHostApi::class)
-
 package com.seanproctor.docking.ui
 
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -23,8 +21,8 @@ import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.NodeId
-import com.seanproctor.docking.spi.DockDragGrip
-import com.seanproctor.docking.spi.LocalDockingDragHandover
+import com.seanproctor.docking.window.DockDragGrip
+import com.seanproctor.docking.window.LocalDockingDragHandover
 import com.seanproctor.docking.state.DockState
 
 /**
@@ -310,7 +308,7 @@ private fun DockAreaScope.stripEscapeSlackPx(): Float = 8f * density
 
 /**
  * Starts a drag that the platform's drag-and-drop session carries from here on (see
- * [com.seanproctor.docking.spi.DockingDragHandover]): the root listeners leave it to the
+ * [com.seanproctor.docking.window.DockingDragHandover]): the root listeners leave it to the
  * windows' drop targets.
  */
 private fun DockAreaScope.beginPlatformDrag(
@@ -327,7 +325,7 @@ private fun DockAreaScope.beginPlatformDrag(
 }
 
 /**
- * A tab's grip under a [com.seanproctor.docking.spi.DockingDragHandover]: it reorders within
+ * A tab's grip under a [com.seanproctor.docking.window.DockingDragHandover]: it reorders within
  * its strip while the pointer stays there, the way the core's own gesture does, and begins
  * the drag the moment the pointer leaves the strip.
  */
