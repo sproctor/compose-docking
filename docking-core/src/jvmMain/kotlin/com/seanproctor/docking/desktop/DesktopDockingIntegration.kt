@@ -7,6 +7,7 @@ import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.FrameWindowScope
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.state.DockState
@@ -27,28 +28,46 @@ internal class AwtDockHostWindow(
             if (!window.isShowing) return null
             val content = window.contentPane
             val location = content.locationOnScreen
-            Rect(
-                location.x * density,
-                location.y * density,
-                (location.x + content.width) * density,
-                (location.y + content.height) * density,
-            )
+            contentRectPx(location.x, location.y, content.width, content.height, density)
         }.getOrNull()
 
     override val isFocused: Boolean get() = window.isFocused
 
     override fun moveContentTo(position: Offset) {
         runCatching {
-            // The frame moves, not the content: shift it by however far the content is from
-            // where it should be, which also holds for a window with a title bar.
-            val location = window.contentPane.locationOnScreen
-            window.setLocation(
-                window.x + (position.x / density - location.x).roundToInt(),
-                window.y + (position.y / density - location.y).roundToInt(),
-            )
+            val content = window.contentPane.locationOnScreen
+            val frame = frameLocationFor(position, density, window.x, window.y, content.x, content.y)
+            window.setLocation(frame.x, frame.y)
         }
     }
 }
+
+/** A window's content at ([x], [y]), [width] by [height] in AWT's logical units, in pixels. */
+internal fun contentRectPx(
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+    density: Float,
+): Rect = Rect(x * density, y * density, (x + width) * density, (y + height) * density)
+
+/**
+ * Where to put a frame at ([frameX], [frameY]) whose content is at ([contentX], [contentY]),
+ * all logical, so the content lands at [position] in pixels. The frame moves, not the content,
+ * so it keeps its offset from the content - which also holds for a window with a title bar.
+ */
+internal fun frameLocationFor(
+    position: Offset,
+    density: Float,
+    frameX: Int,
+    frameY: Int,
+    contentX: Int,
+    contentY: Int,
+): IntOffset =
+    IntOffset(
+        frameX + (position.x / density - contentX).roundToInt(),
+        frameY + (position.y / density - contentY).roundToInt(),
+    )
 
 /**
  * The AWT window showing [windowId]'s dock area, or null when it is not on screen.

@@ -1,6 +1,11 @@
 package com.seanproctor.docking.window
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import com.seanproctor.docking.drag.DragListener
 import com.seanproctor.docking.drag.DragSource
 import com.seanproctor.docking.model.DockNode
@@ -110,7 +115,7 @@ public class DockingWindowHost internal constructor(private val state: DockState
     }
 
     /**
-     * The drag to draw a preview window for, while [drawsDragPreview] is on: null when
+     * The drag to draw a preview window for, while [claimDragPreview] is held: null when
      * nothing is dragged, or when a window drag carries the real window under the pointer.
      * Snapshot state, so a composable reading it follows the drag.
      */
@@ -120,27 +125,66 @@ public class DockingWindowHost internal constructor(private val state: DockState
             if (session.movesWindow) return null
             return DragPreviewInfo(
                 screenPosition = session.screenPosition,
-                density = controller.window(session.originWindow)?.scope?.density ?: 1f,
+                density = session.originDensity,
                 dockableId = session.payload.primary,
             )
         }
 
     /**
-     * On while the application draws its own preview window from [dragPreview]: the dock
-     * areas then stop drawing the in-window ghost card. Off by default, and where windows
-     * cannot be placed on screen (native Wayland), where the in-window card or the platform's
-     * drag icon is the only preview there can be.
+     * True while the application draws its own preview window from [dragPreview] - while any
+     * [claimDragPreview] is held - and the dock areas leave out their in-window ghost card.
      */
-    public var drawsDragPreview: Boolean
-        get() = controller.dragListener?.showsOwnPreview == true
-        set(value) {
-            controller.dragListener = if (value) ownPreviewListener else null
+    public val drawsDragPreview: Boolean
+        get() = previewClaims > 0
+
+    /**
+     * Takes over drawing the drag preview, for a window of the application's own that follows
+     * [dragPreview]: the dock areas stop drawing the in-window ghost card until the claim is
+     * released. Claims count, so two owners - a preview window coming and one going, say -
+     * cannot switch each other's off. Don't claim where windows cannot be placed on screen
+     * (native Wayland), where the in-window card or the platform's drag icon is the only
+     * preview there can be.
+     */
+    public fun claimDragPreview(): DragPreviewClaim {
+        previewClaims++
+        controller.dragListener = ownPreviewListener
+        return object : DragPreviewClaim {
+            private var released = false
+
+            override fun release() {
+                if (released) return
+                released = true
+                previewClaims--
+                if (previewClaims == 0 && controller.dragListener === ownPreviewListener) controller.dragListener = null
+            }
         }
+    }
+
+    private var previewClaims = 0
 
     private val ownPreviewListener =
         object : DragListener {
             override val showsOwnPreview: Boolean get() = true
         }
+
+    /**
+     * Cancels the running drag, putting everything back, when [event] is Escape going down;
+     * true when it did. A dock area does this itself while it has focus. Pass a window's own
+     * key events here too (`Window(onPreviewKeyEvent = state.windowHost::cancelOnEscape)`), so
+     * Escape works whatever has focus - a drag started from a title bar outside the dock area
+     * leaves focus wherever it was.
+     */
+    public fun cancelOnEscape(event: KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown || event.key != Key.Escape || controller.session == null) return false
+        controller.cancel()
+        return true
+    }
+}
+
+/** A hold on drawing the drag preview, from [DockingWindowHost.claimDragPreview]. */
+public interface DragPreviewClaim {
+    /** Gives the preview back to the dock areas, once the last claim goes. Safe to call twice. */
+    public fun release()
 }
 
 /** A drag's preview, as [DockingWindowHost.dragPreview] reports it. */

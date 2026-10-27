@@ -18,7 +18,8 @@ import com.seanproctor.docking.state.DockState
  * Makes this element drag OS window [windowId] the way a title bar does - and, released over
  * another dock area, dock what the window holds there. Put it on the title bar an application
  * draws for a floating window, or let [com.seanproctor.docking.ui.DockArea]'s
- * `headerDragsWindow` put it on the header of a window's lone dockable.
+ * `headerDragsWindow` put it on the header of a window's lone dockable, or on the tab strip of
+ * its lone tab group.
  *
  * The move is driven from Compose rather than handed to the window manager, which is what makes
  * the docking half possible at all: a move the window manager drives takes the pointer with it,
@@ -29,7 +30,9 @@ import com.seanproctor.docking.state.DockState
  * A press something inside took first (a button in the title bar) is that thing's, not a drag.
  * The window docks as a whole only while it holds one dockable or one tab group; holding
  * anything else, or being the main window, it is only moved. Escape during the drag puts the
- * window back where it started.
+ * window back where it started, when the key reaches the docking system: a dock area with
+ * focus, or the window's own key events passed to [DockingWindowHost.cancelOnEscape] - a
+ * title bar outside the dock area does not take focus.
  */
 public fun Modifier.dockWindowDragArea(
     state: DockState,

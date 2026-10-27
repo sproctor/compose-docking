@@ -18,6 +18,9 @@ dependencies {
     }
     implementation(libs.nucleus.application)
     implementation(libs.nucleus.decorated.window.tao)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(compose.desktop.uiTestJUnit4)
 }
 
 // Nucleus windows need no JetBrains Runtime (no AWT in the process), but Jewel's classes

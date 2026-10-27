@@ -2,6 +2,10 @@ package com.seanproctor.docking.window
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import com.seanproctor.docking.drag.DragSource
 import com.seanproctor.docking.drag.DropTarget
 import com.seanproctor.docking.model.DockNode
@@ -210,12 +214,60 @@ class DockingWindowHostTest {
     fun anOwnPreviewReplacesTheInWindowCard() {
         val state = setUp().state
 
-        state.windowHost.drawsDragPreview = true
+        val claim = state.windowHost.claimDragPreview()
         assertTrue(state.windowHost.drawsDragPreview)
         assertTrue(state.dragController.dragListener?.showsOwnPreview == true)
 
-        state.windowHost.drawsDragPreview = false
+        claim.release()
+        assertFalse(state.windowHost.drawsDragPreview)
         assertNull(state.dragController.dragListener)
+    }
+
+    // A preview window going away must not switch off one that is still drawing - the in-window
+    // card would come back beside it, two previews for one drag.
+    @Test
+    fun oneOwnerReleasingKeepsAnotherOwnersPreview() {
+        val host = setUp().state.windowHost
+        val leaving = host.claimDragPreview()
+        val staying = host.claimDragPreview()
+
+        leaving.release()
+        leaving.release()
+
+        assertTrue(host.drawsDragPreview, "the second release of the same claim counts for nothing")
+        staying.release()
+        assertFalse(host.drawsDragPreview)
+    }
+
+    // Tearing the last thing out of a floating window closes the window and its dock area goes
+    // with it; the preview still needs that window's density to place itself.
+    @Test
+    fun thePreviewKeepsTheDensityTheDragBeganWith() {
+        val setup = setUp()
+        val state = setup.state
+        state.dragController.window(setup.floatingId)?.scope?.density = 2f
+        state.dragController.startDrag(DragSource.Header(B), positionInWindow = Offset(20f, 10f), windowId = setup.floatingId)
+
+        state.dragController.unregisterWindow(setup.floatingId)
+
+        assertEquals(2f, assertNotNull(state.windowHost.dragPreview).density)
+    }
+
+    // Desktop's KeyEvent factory is the one way to make a key event outside a window.
+    @OptIn(InternalComposeUiApi::class)
+    @Test
+    fun escapeCancelsADrag() {
+        val setup = setUp()
+        val host = setup.state.windowHost
+        host.startWindowDrag(setup.floatingId, Offset(20f, 10f))
+
+        assertFalse(host.cancelOnEscape(KeyEvent(Key.A, KeyEventType.KeyDown)), "other keys pass")
+        assertFalse(host.cancelOnEscape(KeyEvent(Key.Escape, KeyEventType.KeyUp)), "only the press")
+        assertTrue(host.isDragging)
+
+        assertTrue(host.cancelOnEscape(KeyEvent(Key.Escape, KeyEventType.KeyDown)))
+        assertFalse(host.isDragging)
+        assertFalse(host.cancelOnEscape(KeyEvent(Key.Escape, KeyEventType.KeyDown)), "nothing left to cancel")
     }
 
     // ----- Which window is under the pointer -----
@@ -269,6 +321,24 @@ class DockingWindowHostTest {
     fun aWindowWithoutBoundsIsNeverHit() {
         val (state, _) = twoWindows(floatingFocused = true, floatingBounds = null)
         assertEquals(WindowId.MAIN, state.hoverAt(Offset(150f, 150f)))
+    }
+
+    // A window that cannot say where it is (native Wayland) shares no space with the others, but
+    // a drag inside it must still find it - not tear the panel off because no window was hit.
+    @Test
+    fun aWindowWithoutBoundsStillTakesDragsWithinItself() {
+        val state = state()
+        state.dock(A)
+        state.dock(C, DockTarget.OnDockable(A), DockRegion.East)
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
+        state.moveToNewWindow(B, WindowBounds(100f, 100f, 300f, 200f))
+        val floatingId = state.layout.floatingWindows.single().id
+        state.show(WindowId.MAIN, onScreen = null, size = Rect(0f, 0f, 800f, 600f))
+        // Placeable, focused, and where main's own positions would land in screen space.
+        state.show(floatingId, Rect(100f, 100f, 400f, 300f), Rect(0f, 0f, 300f, 200f), focused = true)
+
+        assertEquals(WindowId.MAIN, state.hoverAt(Offset(150f, 150f)), "its positions are its own")
+        assertNull(state.hoverAt(Offset(900f, 700f)), "and off its dock area, over nothing")
     }
 
     @Test

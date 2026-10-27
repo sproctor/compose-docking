@@ -45,6 +45,7 @@ import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.rememberDockState
+import com.seanproctor.docking.window.windowHost
 import com.seanproctor.docking.ui.DockArea
 import java.awt.FileDialog
 import java.io.File
@@ -91,6 +92,8 @@ fun main(args: Array<String>) {
                 onCloseRequest = ::exitApplication,
                 state = rememberWindowState(size = DpSize(800.dp, 600.dp)),
                 title = "Compose Docking Jewel Demo",
+                // Escape cancels a drag whatever has focus in the window.
+                onPreviewKeyEvent = state.windowHost::cancelOnEscape,
             ) {
                 var showCreatePanel by remember { mutableStateOf(false) }
                 var showStoreLayout by remember { mutableStateOf(false) }

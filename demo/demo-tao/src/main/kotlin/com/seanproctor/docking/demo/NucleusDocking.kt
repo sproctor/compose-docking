@@ -133,6 +133,7 @@ fun NucleusApplicationScope.NucleusFloatingDockWindows(state: DockState) {
             icon = model.icon,
             undecorated = true,
             resizable = true,
+            onPreviewKeyEvent = state.windowHost::cancelOnEscape,
         ) {
             NucleusDockArea(state, model.windowId, Modifier.fillMaxSize(), headerDragsWindow = true)
         }
@@ -166,7 +167,7 @@ private class TransferHandover(
  * What the grip does before the platform session takes the gesture: a tab reorders within its
  * strip, everything else hands over as soon as the touch slop is passed.
  */
-private class GripGesture(
+internal class GripGesture(
     private val grip: DockDragGrip,
 ) : TransferDragGesture {
     var lastPosition: Offset? = null
@@ -187,10 +188,10 @@ private class GripGesture(
 }
 
 /** The drag icon's title card: a header-sized strip, whatever the size of what is dragged. */
-private val GhostCardSizePx = Size(240f, 48f)
+internal val GhostCardSizePx = Size(240f, 48f)
 
 /** The platform session of one docking drag, as Nucleus's transfer drag carries it. */
-private class DockTransferDrag(
+internal class DockTransferDrag(
     private val state: DockState,
     grip: DockDragGrip,
 ) : TransferDrag {
@@ -264,8 +265,8 @@ private fun NucleusApplicationScope.DragPreviewWindow(state: DockState) {
     // Both ways the preview is the application's: this window where windows can be placed, the
     // compositor's drag icon (the platform session's) where they cannot.
     DisposableEffect(host) {
-        host.drawsDragPreview = true
-        onDispose { host.drawsDragPreview = false }
+        val claim = host.claimDragPreview()
+        onDispose { claim.release() }
     }
     val preview = host.dragPreview ?: return
     // Asked once a drag runs, when the main window is registered.

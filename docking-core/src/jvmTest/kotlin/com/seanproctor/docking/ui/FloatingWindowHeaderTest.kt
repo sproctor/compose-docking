@@ -1,6 +1,9 @@
 package com.seanproctor.docking.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -22,6 +25,10 @@ import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.tree.windowContaining
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
+import com.seanproctor.docking.spi.TabStripModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -209,5 +216,85 @@ class FloatingWindowHeaderTest {
         assertEquals(true, insideFloating?.isFloating, "B is in the torn-off window")
         assertEquals(floatingId, insideFloating?.windowId)
         assertEquals(false, insideMain?.isFloating, "A stayed in the main window")
+    }
+
+    // The main window has no title bar to stand in for: its lone dockable's header keeps
+    // tearing the panel out, whatever the dock area was asked.
+    @Test
+    fun theMainWindowsHeaderNeverDragsTheWindow() = runComposeUiTest {
+        val state = uiState()
+        state.dock(A)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides HeaderRecordingRenderer()) {
+                DockArea(state, modifier = Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
+        }
+
+        onNodeWithText("Alpha").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        assertEquals(false, assertNotNull(state.dragController.session).movesWindow, "a tear-out, not a window drag")
+    }
+
+    // A window holding one tab group has no header to drag it by; the empty part of its strip
+    // is the title bar, and the group docks as a whole when it is let go.
+    @Test
+    fun aLoneTabGroupsStripDragsItsWindow() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        state.dock(A, DockTarget.OnDockable(B), DockRegion.Center)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides GutterTaggingRenderer) {
+                DockArea(state, floatingId, Modifier.fillMaxSize(), headerDragsWindow = true)
+            }
+        }
+
+        onNodeWithTag("gutter").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        val session = assertNotNull(state.dragController.session)
+        assertTrue(session.movesWindow, "the strip carries the window")
+        assertEquals(listOf(B, A), session.payload.all, "and with it the whole group")
+    }
+
+    // Without being asked, the strip keeps tearing its group out of the window.
+    @Test
+    fun aTabGroupsStripKeepsItsOwnDragUnlessAsked() = runComposeUiTest {
+        val (state, floatingId) = tornOff()
+        state.dock(A, DockTarget.OnDockable(B), DockRegion.Center)
+        setContent {
+            CompositionLocalProvider(LocalDockingRenderer provides GutterTaggingRenderer) {
+                DockArea(state, floatingId, Modifier.fillMaxSize())
+            }
+        }
+
+        onNodeWithTag("gutter").performMouseInput {
+            moveTo(center)
+            press()
+            repeat(8) { moveTo(center + Offset(0f, 20f * (it + 1))) }
+        }
+        waitForIdle()
+
+        // Torn out, not carried: the group left its window, which emptied and closed.
+        assertNull(state.layout.window(floatingId), "the window the group was in is gone")
+        assertTrue(state.isDocked(A) && state.isDocked(B), "and the group is somewhere else")
+    }
+}
+
+/** Draws the tab strip as the debug renderer does, with its gutter as a tagged box to drag. */
+private object GutterTaggingRenderer : DockingRenderer by DebugDockingRenderer {
+    @Composable
+    override fun TabStrip(model: TabStripModel, modifier: Modifier) {
+        Column(modifier) {
+            DebugDockingRenderer.TabStrip(model, Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth().height(24.dp).testTag("gutter").then(model.gutterDragModifier))
+        }
     }
 }

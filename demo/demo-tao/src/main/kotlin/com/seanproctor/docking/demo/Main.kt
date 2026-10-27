@@ -30,6 +30,7 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import com.seanproctor.docking.state.rememberDockState
+import com.seanproctor.docking.window.windowHost
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.window.TitleBar
@@ -76,6 +77,8 @@ fun main(args: Array<String>) {
                 onCloseRequest = ::exitApplication,
                 state = rememberWindowState(size = DpSize(900.dp, 640.dp)),
                 title = "Compose Docking Tao Demo",
+                // Escape cancels a drag whatever has focus in the window.
+                onPreviewKeyEvent = state.windowHost::cancelOnEscape,
             ) {
                 JewelDocking {
                     Column(Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground)) {

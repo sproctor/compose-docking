@@ -105,8 +105,8 @@ public class DockWindowInfo(
  * [headerDragsWindow] is for a floating window without a title bar: the header of the one
  * dockable it holds then stands in for one, dragging the whole window
  * ([com.seanproctor.docking.window.dockWindowDragArea]) instead of tearing the panel out of
- * it. Ignored in the main window, and while the window holds anything but one dockable, since
- * no one header speaks for it then.
+ * it - or, for a window holding one tab group, the empty part of its tab strip does. Ignored in
+ * the main window, and while the window holds a split, since no one header speaks for it then.
  */
 @Composable
 public fun DockArea(
@@ -137,17 +137,16 @@ public fun DockArea(
                 renderer.EmptyRootPlaceholder(Modifier.fillMaxSize())
             } else {
                 key(root.id) {
-                    // The lone dockable of a window is the one whose header stands where a
-                    // title bar would, so it is the one that gets to drag the window.
-                    if (root is DockNode.Leaf) {
-                        scope.RenderLeaf(
-                            root,
-                            showHeader = true,
-                            Modifier.fillMaxSize(),
-                            headerMovesWindow = headerDragsWindow && window.kind == WindowKind.Floating,
-                        )
-                    } else {
-                        scope.RenderNode(root, Modifier.fillMaxSize())
+                    // The lone dockable or tab group of a window is the one whose header
+                    // stands where a title bar would, so it is the one that gets to drag it.
+                    val dragsWindow = headerDragsWindow && window.kind == WindowKind.Floating
+                    when (root) {
+                        is DockNode.Leaf ->
+                            scope.RenderLeaf(root, showHeader = true, Modifier.fillMaxSize(), headerMovesWindow = dragsWindow)
+                        // A tab group's title bar is its strip: the space beside the tabs drags
+                        // the window, the tabs themselves still drag out one at a time.
+                        is DockNode.Tabs -> scope.RenderTabs(root, Modifier.fillMaxSize(), gutterMovesWindow = dragsWindow)
+                        else -> scope.RenderNode(root, Modifier.fillMaxSize())
                     }
                 }
             }
@@ -302,7 +301,12 @@ internal fun DockAreaScope.DockableContentBox(id: DockableId, modifier: Modifier
 // ----- Tabs -----
 
 @Composable
-internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
+internal fun DockAreaScope.RenderTabs(
+    node: DockNode.Tabs,
+    modifier: Modifier,
+    /** Whether the strip's empty space drags the window: the window's lone tab group, asked to. */
+    gutterMovesWindow: Boolean = false,
+) {
     val renderer = LocalDockingRenderer.current
     NodeBoundsEffect(node.id)
     val selected = node.selectedTab
@@ -323,7 +327,7 @@ internal fun DockAreaScope.RenderTabs(node: DockNode.Tabs, modifier: Modifier) {
     ) {
         val strip: @Composable () -> Unit = {
             renderer.TabStrip(
-                buildTabStripModel(node, placement),
+                buildTabStripModel(node, placement, gutterMovesWindow),
                 Modifier
                     .fillMaxWidth()
                     .onGloballyPositioned { bounds.updateTabStrip(node.id, it.boundsInRoot()) },
@@ -372,6 +376,7 @@ private fun DockAreaScope.resolveTabPlacement(node: DockNode.Tabs): TabPlacement
 private fun DockAreaScope.buildTabStripModel(
     node: DockNode.Tabs,
     placement: TabPlacement,
+    gutterMovesWindow: Boolean,
 ): TabStripModel {
     val tabs = node.tabs.mapIndexed { index, tab ->
         val spec = state.registry[tab.dockableId]
@@ -392,7 +397,8 @@ private fun DockAreaScope.buildTabStripModel(
         selectedIndex = node.selectedIndex,
         placement = placement,
         trailingActions = state.registry[selectedDockableOf(node)]?.tabStripActions ?: {},
-        gutterDragModifier = gutterGestureModifier(node),
+        gutterDragModifier =
+            if (gutterMovesWindow) Modifier.dockWindowDragArea(state, windowId) else gutterGestureModifier(node),
         dropInsertionIndex = tabDropInsertionIndex(node.id),
     )
 }

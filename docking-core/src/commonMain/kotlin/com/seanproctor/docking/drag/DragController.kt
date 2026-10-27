@@ -68,6 +68,12 @@ internal class DragSession(
      * was dropped, which is what dragging a window is normally for.
      */
     val movesWindow: Boolean = false,
+    /**
+     * [originWindow]'s density as the drag began. Kept here because the window can close
+     * mid-drag - tearing out the last thing in a floating window empties it - and with it
+     * goes the dock area that knew the density.
+     */
+    val originDensity: Float = 1f,
 ) {
     var screenPosition: Offset by mutableStateOf(Offset.Zero)
 
@@ -134,14 +140,22 @@ internal class DragController(private val state: DockState) {
 
     fun hostWindow(windowId: WindowId): DockHostWindow? = hostWindows[windowId]
 
+    /**
+     * Where each registered OS window's content is on screen, asked once. Reading a window's
+     * position can be a round trip to the display server, so a pointer move reads them all
+     * once and works from this.
+     */
+    private fun screenBounds(): Map<WindowId, Rect?> = hostWindows.mapValues { it.value.contentBoundsOnScreen() }
+
     /** Where [windowId]'s root origin is in the shared space; null maps positions unchanged. */
-    private fun originOf(windowId: WindowId): Offset? = hostWindows[windowId]?.contentBoundsOnScreen()?.topLeft
+    private fun originOf(windowId: WindowId, bounds: Map<WindowId, Rect?>? = null): Offset? =
+        (if (bounds != null) bounds[windowId] else hostWindows[windowId]?.contentBoundsOnScreen())?.topLeft
 
-    internal fun toScreen(windowId: WindowId, position: Offset): Offset =
-        originOf(windowId)?.let { position + it } ?: position
+    internal fun toScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
+        originOf(windowId, bounds)?.let { position + it } ?: position
 
-    internal fun fromScreen(windowId: WindowId, position: Offset): Offset =
-        originOf(windowId)?.let { position - it } ?: position
+    internal fun fromScreen(windowId: WindowId, position: Offset, bounds: Map<WindowId, Rect?>? = null): Offset =
+        originOf(windowId, bounds)?.let { position - it } ?: position
 
     internal fun registeredWindows(): List<RegisteredWindow> = windows.values.toList()
 
@@ -171,11 +185,12 @@ internal class DragController(private val state: DockState) {
         if (session != null) return
         val payload = buildPayload(source, windowId, sourceSize) ?: return
         val snapshot = state.layout
+        val originDensity = windows[windowId]?.scope?.density ?: 1f
         // Undocking is what turns a panel into a ghost following the pointer. A window
         // drag has the real window to follow it, and undocking would delete that window
         // out from under the gesture, so the payload stays where it is until the drop.
         if (!movesWindow) payload.all.forEach { state.undockTemporarily(it) }
-        val newSession = DragSession(source, payload, windowId, snapshot, movesWindow)
+        val newSession = DragSession(source, payload, windowId, snapshot, movesWindow, originDensity)
         session = newSession
         dragListener?.onDragStarted(newSession)
         updateDrag(positionInWindow, windowId)
@@ -184,14 +199,20 @@ internal class DragController(private val state: DockState) {
     fun updateDrag(positionInWindow: Offset, windowId: WindowId) {
         val s = session ?: return
         if (windowId !in windows) return
-        val screen = toScreen(windowId, positionInWindow)
+        val bounds = screenBounds()
+        val screen = toScreen(windowId, positionInWindow, bounds)
         s.screenPosition = screen
         dragListener?.onDragMoved(screen)
 
         // The dragged window sits under the pointer for the whole gesture - it is following
         // it - so it has to be looked past to find what is underneath, and it is never a
         // target for itself.
-        val hoveredId = resolveWindowAt(screen, exclude = s.originWindow.takeIf { s.movesWindow })
+        val hoveredId = resolveWindowAt(
+            screen,
+            bounds,
+            exclude = s.originWindow.takeIf { s.movesWindow },
+            from = windowId,
+        )
         if (hoveredId == null) {
             s.hoveredWindow = null
             s.handles = emptyList()
@@ -211,7 +232,7 @@ internal class DragController(private val state: DockState) {
             return
         }
         val hovered = windows[hoveredId] ?: return
-        val local = fromScreen(hoveredId, screen)
+        val local = fromScreen(hoveredId, screen, bounds)
         s.hoveredWindow = hoveredId
         s.handles = computeHandles(hovered, local, s.payload)
         s.target = resolveTarget(hovered, local, s)
@@ -358,24 +379,39 @@ internal class DragController(private val state: DockState) {
     // ----- Window resolution -----
 
     /**
-     * The window under a shared-space point, ignoring [exclude] (the window being dragged,
-     * which is always under the pointer). With OS windows registered, the topmost of those
-     * whose content is there: the focused one when it is hit, else the most recently
-     * registered - floating windows register after the main one and usually stack above it.
-     * Without any (a single window, or tests), each dock area's own bounds.
+     * The window under a shared-space point reported by window [from], ignoring [exclude]
+     * (the window being dragged, which is always under the pointer). With OS windows
+     * registered, the topmost of those whose content is there: the focused one when it is
+     * hit, else the most recently registered - floating windows register after the main one
+     * and usually stack above it. Without any (a single window, or tests), each dock area's
+     * own bounds.
+     *
+     * A window that cannot say where it is on screen (no [DockHostWindow.contentBoundsOnScreen],
+     * or no OS window registered for it) shares no space with the others: its positions pass
+     * through as they are, so a point it reports can only be over itself, tested against its
+     * own dock area. Drags out of such a window into another need the platform to carry them.
      */
-    private fun resolveWindowAt(screen: Offset, exclude: WindowId? = null): WindowId? {
-        if (hostWindows.isNotEmpty()) {
-            val hits = hostWindows.entries.filter { (id, window) ->
-                id != exclude && id in windows && window.contentBoundsOnScreen()?.contains(screen) == true
-            }
-            if (hits.isEmpty()) return null
-            return (hits.firstOrNull { it.value.isFocused } ?: hits.last()).key
+    private fun resolveWindowAt(
+        screen: Offset,
+        bounds: Map<WindowId, Rect?>,
+        exclude: WindowId?,
+        from: WindowId,
+    ): WindowId? {
+        if (hostWindows.isEmpty()) {
+            return windows.values.firstOrNull { reg ->
+                reg.windowId != exclude &&
+                    reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen, bounds))
+            }?.windowId
         }
-        return windows.values.firstOrNull { reg ->
-            reg.windowId != exclude &&
-                reg.scope.bounds.rootBounds.contains(fromScreen(reg.windowId, screen))
-        }?.windowId
+        if (bounds[from] == null) {
+            if (from == exclude) return null
+            return from.takeIf { windows[from]?.scope?.bounds?.rootBounds?.contains(screen) == true }
+        }
+        val hits = hostWindows.entries.filter { (id, _) ->
+            id != exclude && id in windows && bounds[id]?.contains(screen) == true
+        }
+        if (hits.isEmpty()) return null
+        return (hits.firstOrNull { it.value.isFocused } ?: hits.last()).key
     }
 
     // ----- Handles -----
@@ -561,7 +597,7 @@ internal class DragController(private val state: DockState) {
                 anyDocked
             }
             is DropTarget.NewWindow -> {
-                val originDensity = windows[s.originWindow]?.scope?.density ?: 1f
+                val originDensity = s.originDensity
                 val sizeDp = s.payload.sourceSize?.let { Size(it.width / originDensity, it.height / originDensity) }
                 state.moveToNewWindow(
                     primary,

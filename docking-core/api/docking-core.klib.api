@@ -176,6 +176,10 @@ abstract interface com.seanproctor.docking.window/DockingDragHandover { // com.s
     abstract fun gripModifier(com.seanproctor.docking.window/DockDragGrip, androidx.compose.runtime/Composer?, kotlin/Int): androidx.compose.ui/Modifier // com.seanproctor.docking.window/DockingDragHandover.gripModifier|gripModifier(com.seanproctor.docking.window.DockDragGrip;androidx.compose.runtime.Composer?;kotlin.Int){}[0]
 }
 
+abstract interface com.seanproctor.docking.window/DragPreviewClaim { // com.seanproctor.docking.window/DragPreviewClaim|null[0]
+    abstract fun release() // com.seanproctor.docking.window/DragPreviewClaim.release|release(){}[0]
+}
+
 sealed interface com.seanproctor.docking.drag/DropTarget { // com.seanproctor.docking.drag/DropTarget|null[0]
     final class NewWindow : com.seanproctor.docking.drag/DropTarget { // com.seanproctor.docking.drag/DropTarget.NewWindow|null[0]
         constructor <init>(androidx.compose.ui.geometry/Offset) // com.seanproctor.docking.drag/DropTarget.NewWindow.<init>|<init>(androidx.compose.ui.geometry.Offset){}[0]
@@ -1224,14 +1228,14 @@ final class com.seanproctor.docking.window/DockDragGrip { // com.seanproctor.doc
 final class com.seanproctor.docking.window/DockingWindowHost { // com.seanproctor.docking.window/DockingWindowHost|null[0]
     final val dragPreview // com.seanproctor.docking.window/DockingWindowHost.dragPreview|{}dragPreview[0]
         final fun <get-dragPreview>(): com.seanproctor.docking.window/DragPreviewInfo? // com.seanproctor.docking.window/DockingWindowHost.dragPreview.<get-dragPreview>|<get-dragPreview>(){}[0]
+    final val drawsDragPreview // com.seanproctor.docking.window/DockingWindowHost.drawsDragPreview|{}drawsDragPreview[0]
+        final fun <get-drawsDragPreview>(): kotlin/Boolean // com.seanproctor.docking.window/DockingWindowHost.drawsDragPreview.<get-drawsDragPreview>|<get-drawsDragPreview>(){}[0]
     final val isDragging // com.seanproctor.docking.window/DockingWindowHost.isDragging|{}isDragging[0]
         final fun <get-isDragging>(): kotlin/Boolean // com.seanproctor.docking.window/DockingWindowHost.isDragging.<get-isDragging>|<get-isDragging>(){}[0]
 
-    final var drawsDragPreview // com.seanproctor.docking.window/DockingWindowHost.drawsDragPreview|{}drawsDragPreview[0]
-        final fun <get-drawsDragPreview>(): kotlin/Boolean // com.seanproctor.docking.window/DockingWindowHost.drawsDragPreview.<get-drawsDragPreview>|<get-drawsDragPreview>(){}[0]
-        final fun <set-drawsDragPreview>(kotlin/Boolean) // com.seanproctor.docking.window/DockingWindowHost.drawsDragPreview.<set-drawsDragPreview>|<set-drawsDragPreview>(kotlin.Boolean){}[0]
-
     final fun cancel() // com.seanproctor.docking.window/DockingWindowHost.cancel|cancel(){}[0]
+    final fun cancelOnEscape(androidx.compose.ui.input.key/KeyEvent): kotlin/Boolean // com.seanproctor.docking.window/DockingWindowHost.cancelOnEscape|cancelOnEscape(androidx.compose.ui.input.key.KeyEvent){}[0]
+    final fun claimDragPreview(): com.seanproctor.docking.window/DragPreviewClaim // com.seanproctor.docking.window/DockingWindowHost.claimDragPreview|claimDragPreview(){}[0]
     final fun drop() // com.seanproctor.docking.window/DockingWindowHost.drop|drop(){}[0]
     final fun dropInWindow(androidx.compose.ui.geometry/Offset, com.seanproctor.docking.model/WindowId): kotlin/Boolean // com.seanproctor.docking.window/DockingWindowHost.dropInWindow|dropInWindow(androidx.compose.ui.geometry.Offset;com.seanproctor.docking.model.WindowId){}[0]
     final fun endPlatformDrag() // com.seanproctor.docking.window/DockingWindowHost.endPlatformDrag|endPlatformDrag(){}[0]

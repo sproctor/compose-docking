@@ -1335,6 +1335,8 @@ public final class com/seanproctor/docking/window/DockingDragHandoverKt {
 public final class com/seanproctor/docking/window/DockingWindowHost {
 	public static final field $stable I
 	public final fun cancel ()V
+	public final fun cancelOnEscape-ZmokQxo (Ljava/lang/Object;)Z
+	public final fun claimDragPreview ()Lcom/seanproctor/docking/window/DragPreviewClaim;
 	public final fun drop ()V
 	public final fun dropInWindow-HZcugG8 (JLjava/lang/String;)Z
 	public final fun endPlatformDrag ()V
@@ -1343,13 +1345,16 @@ public final class com/seanproctor/docking/window/DockingWindowHost {
 	public final fun getDrawsDragPreview ()Z
 	public final fun hoverInWindow-HZcugG8 (JLjava/lang/String;)V
 	public final fun isDragging ()Z
-	public final fun setDrawsDragPreview (Z)V
 	public final fun startWindowDrag-7xCtmBs (Ljava/lang/String;J)Z
 	public final fun updateDrag-HZcugG8 (JLjava/lang/String;)V
 }
 
 public final class com/seanproctor/docking/window/DockingWindowHostKt {
 	public static final fun getWindowHost (Lcom/seanproctor/docking/state/DockState;)Lcom/seanproctor/docking/window/DockingWindowHost;
+}
+
+public abstract interface class com/seanproctor/docking/window/DragPreviewClaim {
+	public abstract fun release ()V
 }
 
 public final class com/seanproctor/docking/window/DragPreviewInfo {

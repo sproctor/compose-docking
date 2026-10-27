@@ -64,6 +64,8 @@ public fun ApplicationScope.FloatingDockWindows(state: DockState) {
             icon = model.icon,
             undecorated = true,
             resizable = true,
+            // Escape cancels a drag of this window whatever has focus in it.
+            onPreviewKeyEvent = state.windowHost::cancelOnEscape,
         ) {
             registerDockingWindow(state, model.windowId)
             DockArea(state, model.windowId, Modifier.fillMaxSize(), headerDragsWindow = true)
@@ -85,6 +87,10 @@ public fun ApplicationScope.FloatingDockWindows(state: DockState) {
  *   [registerDockingWindow] for an AWT window), so drags can pass between windows;
  * - show `DockArea(state, model.windowId)`.
  *
+ * Pass the window's key events to [com.seanproctor.docking.window.DockingWindowHost.cancelOnEscape]
+ * (`onPreviewKeyEvent = state.windowHost::cancelOnEscape`), so Escape cancels a drag whatever
+ * has focus in the window.
+ *
  * Something has to move the window: an OS title bar does, but cannot dock it anywhere when it
  * is let go. A title bar drawn in Compose with
  * [com.seanproctor.docking.window.dockWindowDragArea] moves it and docks it, and so does the
@@ -92,7 +98,13 @@ public fun ApplicationScope.FloatingDockWindows(state: DockState) {
  *
  * ```
  * FloatingDockWindows(state) { model ->
- *     Window(onCloseRequest = model.onCloseRequest, state = model.state, title = model.title, undecorated = true) {
+ *     Window(
+ *         onCloseRequest = model.onCloseRequest,
+ *         state = model.state,
+ *         title = model.title,
+ *         undecorated = true,
+ *         onPreviewKeyEvent = state.windowHost::cancelOnEscape,
+ *     ) {
  *         registerDockingWindow(state, model.windowId)
  *         Column {
  *             MyTitleBar(model.title, Modifier.dockWindowDragArea(state, model.windowId))
@@ -161,8 +173,8 @@ private fun FloatingDockWindow(
 public fun ApplicationScope.DockDragPreviewWindow(state: DockState) {
     val host = state.windowHost
     DisposableEffect(host) {
-        host.drawsDragPreview = true
-        onDispose { host.drawsDragPreview = false }
+        val claim = host.claimDragPreview()
+        onDispose { claim.release() }
     }
     val preview = host.dragPreview ?: return
     val density = preview.density

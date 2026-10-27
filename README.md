@@ -74,7 +74,11 @@ fun main() = application {
     // Restore on launch + debounced auto-save on every layout change.
     rememberAutoPersist(state, FileLayoutStorage(File(configDir, "layout.json")))
 
-    Window(onCloseRequest = ::exitApplication, title = "My App") {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "My App",
+        onPreviewKeyEvent = state.windowHost::cancelOnEscape,  // Esc cancels a drag
+    ) {
         MaterialTheme {
             Material3Docking {
                 registerDockingWindow(state)   // desktop: cross-window drag + focus handling
@@ -142,7 +146,13 @@ lambda instead, and the library hands you one `FloatingWindowModel` per floating
 
 ```kotlin
 FloatingDockWindows(state) { model ->
-    Window(onCloseRequest = model.onCloseRequest, state = model.state, title = model.title, undecorated = true) {
+    Window(
+        onCloseRequest = model.onCloseRequest,
+        state = model.state,
+        title = model.title,
+        undecorated = true,
+        onPreviewKeyEvent = state.windowHost::cancelOnEscape,
+    ) {
         registerDockingWindow(state, model.windowId)
         Column {
             MyTitleBar(model.title, Modifier.dockWindowDragArea(state, model.windowId))
@@ -159,8 +169,10 @@ DockDragPreviewWindow(state)  // the window that follows the pointer during a dr
   the window, and released over another dock area docks what the window holds there (a lone
   dockable or a tab group; anything else is only moved). An OS title bar can move a window
   but never dock it, since the window manager keeps the pointer to itself. Or pass
-  `DockArea(..., headerDragsWindow = true)` to let the lone dockable's header be the title
-  bar, the way the built-in windows do.
+  `DockArea(..., headerDragsWindow = true)` to let the lone dockable's header, or a lone tab
+  group's strip, be the title bar, the way the built-in windows do.
+- **`state.windowHost::cancelOnEscape`** as a window's `onPreviewKeyEvent` makes Esc cancel a
+  drag whatever has focus — a title bar outside the dock area does not take it.
 - **`registerDockingWindow(state, windowId, window)`** connects any OS window: implement
   `DockHostWindow` — where its content is on screen, whether it has focus, and how to move
   it — and drags pass between windows. `FrameWindowScope.registerDockingWindow(state)` does
