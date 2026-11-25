@@ -175,10 +175,13 @@ public class DockState(
         }
         val docked = applyDockTarget(ctx, working, dockableId, target, region, proportion)
             ?: return // target vanished - abort atomically, nothing changed
+        // Placement can succeed without inserting the dockable (Root/Center on a
+        // non-empty tree is a no-op). Abort before committing the temporary undock.
+        val destination = docked.windowContaining(dockableId) ?: return
         layout = docked
         if (wasOpen) emit(DockingEvent.Undocked(dockableId, isTemporary = true))
         closed.forEach { emit(DockingEvent.WindowClosed(it)) }
-        emit(DockingEvent.Docked(dockableId, docked.windowContaining(dockableId)!!.id))
+        emit(DockingEvent.Docked(dockableId, destination.id))
     }
 
     /** Removes [dockableId] from the layout entirely. */

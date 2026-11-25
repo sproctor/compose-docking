@@ -45,6 +45,47 @@ private fun testState(
 class DockStateOperationsTest {
 
     @Test
+    fun defaultDockAfterUndockIntoNonEmptyRootIsNoOp() = runTest {
+        val state = testState()
+        state.dock(A)
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
+        state.undock(B)
+        val before = state.layout
+        val events = mutableListOf<DockingEvent>()
+        val job = launch { state.events.collect { events.add(it) } }
+        testScheduler.runCurrent()
+
+        state.dock(B)
+        testScheduler.runCurrent()
+
+        assertEquals(before, state.layout)
+        assertTrue(state.isOpen(A))
+        assertFalse(state.isOpen(B))
+        assertTrue(events.isEmpty())
+        job.cancel()
+    }
+
+    @Test
+    fun rejectedDefaultMoveKeepsOriginalLayoutAndEmitsNothing() = runTest {
+        val state = testState()
+        state.dock(A)
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East)
+        val before = state.layout
+        val events = mutableListOf<DockingEvent>()
+        val job = launch { state.events.collect { events.add(it) } }
+        testScheduler.runCurrent()
+
+        state.dock(B)
+        testScheduler.runCurrent()
+
+        assertEquals(before, state.layout)
+        assertTrue(state.isOpen(A))
+        assertTrue(state.isOpen(B))
+        assertTrue(events.isEmpty())
+        job.cancel()
+    }
+
+    @Test
     fun dockToEmptyRootThenRelative() {
         val state = testState()
         state.dock(A)
