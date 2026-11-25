@@ -112,6 +112,12 @@ private suspend fun PointerInputScope.dockPointerHandler(
                 break
             }
             if (handedOff) continue
+            // Claimed further out - a split divider whose grab area reaches over this pane's
+            // edge. Neither a click nor a drag of ours, then.
+            if (!dragging && change.isConsumed) {
+                clicks.reset()
+                break
+            }
             if (!dragging) {
                 if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
                     dragging = true

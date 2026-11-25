@@ -78,14 +78,14 @@ private fun ComposeUiTest.heightOf(tag: String): Float =
 @OptIn(ExperimentalTestApi::class)
 private fun ComposeUiTest.dragDivider(dx: Float) {
     val pane = onNodeWithTag("pane-a").fetchSemanticsNode().boundsInRoot
-    dragFrom(Offset(pane.right + px(DividerThickness) / 2, pane.center.y), Offset(dx, 0f))
+    dragFrom(Offset(pane.right + px(DockingSettings().dividerThickness) / 2, pane.center.y), Offset(dx, 0f))
 }
 
 /** Drags the divider just south of pane A by [dy] pixels, in small steps. */
 @OptIn(ExperimentalTestApi::class)
 private fun ComposeUiTest.dragDividerDown(dy: Float) {
     val pane = onNodeWithTag("pane-a").fetchSemanticsNode().boundsInRoot
-    dragFrom(Offset(pane.center.x, pane.bottom + px(DividerThickness) / 2), Offset(0f, dy))
+    dragFrom(Offset(pane.center.x, pane.bottom + px(DockingSettings().dividerThickness) / 2), Offset(0f, dy))
 }
 
 @OptIn(ExperimentalTestApi::class)
@@ -134,7 +134,7 @@ class MinPaneSizeTest {
 
         assertNear(px(100.dp), widthOf("pane-b"), "pane B was dragged past its minimum")
         val split = state.layout.window(WindowId.MAIN)!!.root as DockNode.Split
-        val available = px(400.dp) - px(DividerThickness)
+        val available = px(400.dp) - px(DockingSettings().dividerThickness)
         assertNear(available - px(100.dp), split.proportion * available, "committed proportion")
     }
 

@@ -85,7 +85,15 @@ public class HeaderModel(
 public class DividerModel(
     public val orientation: SplitOrientation,
     public val isDragging: Boolean,
-    /** Core-built: drag to resize, double-click to reset 50/50, resize cursor. */
+    /**
+     * Core-built: double-click to reset 50/50 and the resize cursor. Apply it to the divider
+     * element, which core measures to exactly the gap between the panes
+     * ([com.seanproctor.docking.state.DockingSettings.dividerThickness]).
+     *
+     * Dragging is handled by core on the split itself, so it also works from the touch target
+     * that reaches over the panes' edges
+     * ([com.seanproctor.docking.state.DockingSettings.dividerTouchTarget]).
+     */
     public val dragModifier: Modifier,
 )
 

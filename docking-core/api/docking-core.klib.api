@@ -1170,7 +1170,7 @@ final class com.seanproctor.docking.state/DockableSpec { // com.seanproctor.dock
 }
 
 final class com.seanproctor.docking.state/DockingSettings { // com.seanproctor.docking.state/DockingSettings|null[0]
-    constructor <init>(com.seanproctor.docking.model/TabPreference = ..., androidx.compose.ui.unit/Dp = ..., com.seanproctor.docking.state/EmptyAnchorVisibility = ..., androidx.compose.ui.unit/DpSize = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference;androidx.compose.ui.unit.Dp;com.seanproctor.docking.state.EmptyAnchorVisibility;androidx.compose.ui.unit.DpSize){}[0]
+    constructor <init>(com.seanproctor.docking.model/TabPreference = ..., androidx.compose.ui.unit/Dp = ..., com.seanproctor.docking.state/EmptyAnchorVisibility = ..., androidx.compose.ui.unit/DpSize = ..., androidx.compose.ui.unit/Dp = ..., androidx.compose.ui.unit/Dp = ...) // com.seanproctor.docking.state/DockingSettings.<init>|<init>(com.seanproctor.docking.model.TabPreference;androidx.compose.ui.unit.Dp;com.seanproctor.docking.state.EmptyAnchorVisibility;androidx.compose.ui.unit.DpSize;androidx.compose.ui.unit.Dp;androidx.compose.ui.unit.Dp){}[0]
 
     final val alwaysDisplayTabs // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs|{}alwaysDisplayTabs[0]
         final fun <get-alwaysDisplayTabs>(): kotlin/Boolean // com.seanproctor.docking.state/DockingSettings.alwaysDisplayTabs.<get-alwaysDisplayTabs>|<get-alwaysDisplayTabs>(){}[0]
@@ -1180,6 +1180,10 @@ final class com.seanproctor.docking.state/DockingSettings { // com.seanproctor.d
         final fun <get-collapsesEmptyAnchors>(): kotlin/Boolean // com.seanproctor.docking.state/DockingSettings.collapsesEmptyAnchors.<get-collapsesEmptyAnchors>|<get-collapsesEmptyAnchors>(){}[0]
     final val defaultTabPreference // com.seanproctor.docking.state/DockingSettings.defaultTabPreference|{}defaultTabPreference[0]
         final fun <get-defaultTabPreference>(): com.seanproctor.docking.model/TabPreference // com.seanproctor.docking.state/DockingSettings.defaultTabPreference.<get-defaultTabPreference>|<get-defaultTabPreference>(){}[0]
+    final val dividerThickness // com.seanproctor.docking.state/DockingSettings.dividerThickness|{}dividerThickness[0]
+        final fun <get-dividerThickness>(): androidx.compose.ui.unit/Dp // com.seanproctor.docking.state/DockingSettings.dividerThickness.<get-dividerThickness>|<get-dividerThickness>(){}[0]
+    final val dividerTouchTarget // com.seanproctor.docking.state/DockingSettings.dividerTouchTarget|{}dividerTouchTarget[0]
+        final fun <get-dividerTouchTarget>(): androidx.compose.ui.unit/Dp // com.seanproctor.docking.state/DockingSettings.dividerTouchTarget.<get-dividerTouchTarget>|<get-dividerTouchTarget>(){}[0]
     final val emptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility|{}emptyAnchorVisibility[0]
         final fun <get-emptyAnchorVisibility>(): com.seanproctor.docking.state/EmptyAnchorVisibility // com.seanproctor.docking.state/DockingSettings.emptyAnchorVisibility.<get-emptyAnchorVisibility>|<get-emptyAnchorVisibility>(){}[0]
     final val minPaneSize // com.seanproctor.docking.state/DockingSettings.minPaneSize|{}minPaneSize[0]

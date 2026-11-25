@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import com.seanproctor.docking.model.TabPreference
 
 /**
@@ -53,7 +54,33 @@ public class DockingSettings(
      * lets panes shrink to nothing.
      */
     public val minPaneSize: DpSize = DpSize(48.dp, 48.dp),
+    /**
+     * The gap a split leaves between its two sides for the divider to draw in.
+     *
+     * Defaults to 24dp on Android and iOS, the space Material 3's list-detail layout puts
+     * between panes for its drag handle, and to 8dp on desktop and the web, where a pointer
+     * can hit a narrow gap.
+     */
+    public val dividerThickness: Dp = platformDividerThickness,
+    /**
+     * How wide the area that grabs a divider is, centred on the [dividerThickness] gap.
+     *
+     * When this is wider than the gap, the extra width reaches over the edges of the panes on
+     * either side. A drag that starts there moves the divider instead of the header, tab or
+     * content under it; a tap still goes to the pane. Drags are judged by their first move past
+     * touch slop. Defaults to 48dp on Android and
+     * iOS, Material 3's minimum touch target, and to [dividerThickness] elsewhere. Values
+     * smaller than [dividerThickness] count as [dividerThickness].
+     */
+    public val dividerTouchTarget: Dp = platformDividerTouchTarget,
 ) {
+    init {
+        require(dividerThickness.isSpecified && dividerThickness >= 0.dp) {
+            "dividerThickness must be a size of 0dp or more, was $dividerThickness"
+        }
+        require(dividerTouchTarget.isSpecified) { "dividerTouchTarget must be a size, was Dp.Unspecified" }
+    }
+
     /** True when empty anchors collapse to a strip rather than filling their slot. */
     public val collapsesEmptyAnchors: Boolean
         get() = collapsedAnchorThickness != Dp.Unspecified && collapsedAnchorThickness.value > 0f

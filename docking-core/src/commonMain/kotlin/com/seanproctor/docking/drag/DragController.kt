@@ -481,7 +481,7 @@ internal class DragController(private val state: DockState) {
         )
 
         // Handles over the hovered dockable.
-        val hoveredDockable = window.scope.bounds.dockableAt(local)
+        val hoveredDockable = window.scope.bounds.dockableNear(local, dividerSlack(window))
         if (hoveredDockable != null) {
             val bounds = window.scope.bounds.boundsOf(hoveredDockable)
             if (bounds != null) {
@@ -502,6 +502,10 @@ internal class DragController(private val state: DockState) {
         }
         return handles
     }
+
+    /** How far outside a pane still counts as on it: the width of the gap between panes. */
+    private fun dividerSlack(window: RegisteredWindow): Float =
+        state.settings.dividerThickness.value * window.scope.density
 
     // ----- Drop resolution (ModernDocking's exact precedence) -----
 
@@ -525,7 +529,8 @@ internal class DragController(private val state: DockState) {
         }
 
         // 5: proximity region over a dockable.
-        bounds.dockableAt(local)?.let { dockable ->
+        // Near as well as over: the gap a divider leaves between panes is not a dead zone.
+        bounds.dockableNear(local, dividerSlack(window))?.let { dockable ->
             val rect = bounds.boundsOf(dockable) ?: return@let
             var region = resolveRegion(rect, local)
             if (!state.canDock(s.payload.primary, DockTarget.OnDockable(dockable), region)) {
