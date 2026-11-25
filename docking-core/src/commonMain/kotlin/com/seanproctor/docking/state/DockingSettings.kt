@@ -53,6 +53,24 @@ public class DockingSettings(
      * lets panes shrink to nothing.
      */
     public val minPaneSize: DpSize = DpSize(48.dp, 48.dp),
+    /**
+     * The gap a split leaves between its two sides for the divider to draw in.
+     *
+     * Defaults to 24dp on Android and iOS, the space Material 3's list-detail layout puts
+     * between panes for its drag handle, and to 8dp on desktop and the web, where a pointer
+     * can hit a narrow gap.
+     */
+    public val dividerThickness: Dp = platformDividerThickness,
+    /**
+     * How wide the area that grabs a divider is, centred on the [dividerThickness] gap.
+     *
+     * When this is wider than the gap, the extra width reaches over the edges of the panes on
+     * either side and takes presses there before the panes do. This stops a drag meant for
+     * the divider from landing on a header or tab beside it. Defaults to 48dp on Android and
+     * iOS, Material 3's minimum touch target, and to [dividerThickness] elsewhere. Values
+     * smaller than [dividerThickness] count as [dividerThickness].
+     */
+    public val dividerTouchTarget: Dp = platformDividerTouchTarget,
 ) {
     /** True when empty anchors collapse to a strip rather than filling their slot. */
     public val collapsesEmptyAnchors: Boolean

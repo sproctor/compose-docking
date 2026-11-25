@@ -1220,12 +1220,14 @@ public final class com/seanproctor/docking/state/DockingEvent$WindowOpened : com
 public final class com/seanproctor/docking/state/DockingSettings {
 	public static final field $stable I
 	public fun <init> ()V
-	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JFFILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lcom/seanproctor/docking/model/TabPreference;FLcom/seanproctor/docking/state/EmptyAnchorVisibility;JFFLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getAlwaysDisplayTabs ()Z
 	public final fun getCollapsedAnchorThickness-D9Ej5fM ()F
 	public final fun getCollapsesEmptyAnchors ()Z
 	public final fun getDefaultTabPreference ()Lcom/seanproctor/docking/model/TabPreference;
+	public final fun getDividerThickness-D9Ej5fM ()F
+	public final fun getDividerTouchTarget-D9Ej5fM ()F
 	public final fun getEmptyAnchorVisibility ()Lcom/seanproctor/docking/state/EmptyAnchorVisibility;
 	public final fun getMinPaneSize-MYxV2XQ ()J
 }

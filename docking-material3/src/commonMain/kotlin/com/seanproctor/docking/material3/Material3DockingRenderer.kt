@@ -160,7 +160,10 @@ public object Material3DockingRenderer : DockingRenderer {
                 .hoverable(interaction)
                 .then(model.dragModifier),
         ) {
-            val thickness = 4.dp.toPx()
+            // Material 3's drag handle: 4 x 48dp at rest, 12 x 52dp while dragged. The dragged
+            // width is capped at the gap, so a narrow desktop gap doesn't paint over the panes.
+            val across = if (model.orientation == SplitOrientation.Horizontal) size.width else size.height
+            val thickness = (if (model.isDragging) 12.dp else 4.dp).toPx().coerceAtMost(across)
             val length = (if (engaged) 52.dp else 48.dp).toPx()
             val radius = CornerRadius(thickness / 2f, thickness / 2f)
             if (model.orientation == SplitOrientation.Horizontal) {

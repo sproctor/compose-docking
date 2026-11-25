@@ -149,7 +149,7 @@ private fun DockAreaScope.dropPreviewRect(
         SplitOrientation.Vertical
     }
     val axis = if (orientation == SplitOrientation.Horizontal) rect.width else rect.height
-    val available = axis - DividerThickness.value * density
+    val available = axis - state.settings.dividerThickness.value * density
     if (available <= 0f) return previewRectFor(rect, region)
     // The payload docks as one group, so it needs its largest member's minimum.
     val newMin = session.payload.all

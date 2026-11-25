@@ -57,7 +57,7 @@ internal class DockAreaScope(
             else -> settings.minPaneSize
         }
         state.layout.window(windowId)?.root
-            ?.minSizes(::paneMinOf, emptyMin, DividerThickness)
+            ?.minSizes(::paneMinOf, emptyMin, settings.dividerThickness)
             .orEmpty()
     }
 

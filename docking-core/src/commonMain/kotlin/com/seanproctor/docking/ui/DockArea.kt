@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -21,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
@@ -59,13 +62,8 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.window.dockWindowDragArea
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.launch
+import kotlin.math.max
 import kotlin.math.roundToInt
-
-/**
- * Thickness of a split divider: its hit area, and the room a renderer has to draw a drag
- * handle. Wide enough to leave some space around the handle rather than hugging it.
- */
-internal val DividerThickness = 8.dp
 
 /**
  * Which window the content being composed is in.
@@ -449,6 +447,7 @@ internal fun DockAreaScope.RenderSplit(
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val horizontal = node.orientation == SplitOrientation.Horizontal
     val renderer = LocalDockingRenderer.current
+    val dividerThickness = state.settings.dividerThickness
 
     // Neither side may be dragged, or squeezed by the window, below what its panes need. The
     // minimums are read where they are used - the drag handler and the measure lambda - so a
@@ -458,7 +457,7 @@ internal fun DockAreaScope.RenderSplit(
             fun minAlong(side: DockNode): Float = minSizeOf(side.id).along(currentNode.orientation).toPx()
 
             fun total(): Float {
-                val thicknessPx = DividerThickness.toPx()
+                val thicknessPx = dividerThickness.toPx()
                 return if (currentNode.orientation == SplitOrientation.Horizontal) {
                     containerSize.width - thicknessPx
                 } else {
@@ -549,10 +548,19 @@ internal fun DockAreaScope.RenderSplit(
                     collapsedIn = if (firstThickness != null) node.orientation else inheritedCollapse,
                 )
             }
-            renderer.SplitDivider(
-                DividerModel(node.orientation, dividerDragging, dividerModifier),
-                Modifier,
-            )
+            // The grab area wraps the renderer's divider rather than being handed to it, so
+            // it can be wider than the gap the renderer draws in: the layout below centres it
+            // on the gap and places it over the panes either side.
+            Box(dividerModifier, contentAlignment = Alignment.Center) {
+                renderer.SplitDivider(
+                    DividerModel(node.orientation, dividerDragging, Modifier),
+                    if (horizontal) {
+                        Modifier.fillMaxHeight().width(dividerThickness)
+                    } else {
+                        Modifier.fillMaxWidth().height(dividerThickness)
+                    },
+                )
+            }
             key(node.second.id) {
                 RenderNode(
                     node.second,
@@ -564,7 +572,11 @@ internal fun DockAreaScope.RenderSplit(
         require(measurables.size == 3) { "split expects exactly [first, divider, second]" }
         // Read here, not in composition: this is the whole point of the drag being cheap.
         val proportion = dragProportion.value ?: node.proportion
-        val thickness = if (dividerVisible) DividerThickness.roundToPx() else 0
+        val thickness = if (dividerVisible) dividerThickness.roundToPx() else 0
+        // An inert divider has nothing to grab, so it must not reach over the panes and take
+        // their presses.
+        val touch = if (pinned != null) thickness else max(thickness, state.settings.dividerTouchTarget.roundToPx())
+        val overhang = (touch - thickness) / 2
         fun shared(available: Int): Int {
             val firstMin = minSizeOf(node.first.id).along(node.orientation).toPx()
             val secondMin = minSizeOf(node.second.id).along(node.orientation).toPx()
@@ -584,16 +596,19 @@ internal fun DockAreaScope.RenderSplit(
             }
             val secondWidth = available - firstWidth
             val firstPlaceable = measurables[0].measure(Constraints.fixed(firstWidth, height))
-            val dividerPlaceable = measurables[1].measure(Constraints.fixed(thickness, height))
+            val dividerPlaceable = measurables[1].measure(Constraints.fixed(touch, height))
             val secondPlaceable = measurables[2].measure(Constraints.fixed(secondWidth, height))
             layout(width, height) {
                 firstPlaceable.place(0, 0)
+                secondPlaceable.place(firstWidth + thickness, 0)
+                // Placed last so it sits above both sides, where its overhang takes presses
+                // before their headers and tabs do.
+                //
                 // Measuring a hidden divider to nothing is not enough to make it disappear:
                 // renderers draw into the space they are given without clipping to it, so a
                 // grip centred in a zero-width slot still paints, either side of a divider
                 // that is not there. Leaving it unplaced is what actually takes it off screen.
-                if (dividerVisible) dividerPlaceable.place(firstWidth, 0)
-                secondPlaceable.place(firstWidth + thickness, 0)
+                if (dividerVisible) dividerPlaceable.place(firstWidth - overhang, 0)
             }
         } else {
             val available = (height - thickness).coerceAtLeast(0)
@@ -604,12 +619,12 @@ internal fun DockAreaScope.RenderSplit(
             }
             val secondHeight = available - firstHeight
             val firstPlaceable = measurables[0].measure(Constraints.fixed(width, firstHeight))
-            val dividerPlaceable = measurables[1].measure(Constraints.fixed(width, thickness))
+            val dividerPlaceable = measurables[1].measure(Constraints.fixed(width, touch))
             val secondPlaceable = measurables[2].measure(Constraints.fixed(width, secondHeight))
             layout(width, height) {
                 firstPlaceable.place(0, 0)
-                if (dividerVisible) dividerPlaceable.place(0, firstHeight)
                 secondPlaceable.place(0, firstHeight + thickness)
+                if (dividerVisible) dividerPlaceable.place(0, firstHeight - overhang)
             }
         }
     }

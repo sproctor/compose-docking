@@ -85,7 +85,12 @@ public class HeaderModel(
 public class DividerModel(
     public val orientation: SplitOrientation,
     public val isDragging: Boolean,
-    /** Core-built: drag to resize, double-click to reset 50/50, resize cursor. */
+    /**
+     * Always [Modifier] for dividers core draws. Core puts the drag, double-click and cursor
+     * handling on a grab area around the divider
+     * ([com.seanproctor.docking.state.DockingSettings.dividerTouchTarget]), which can be
+     * wider than the space the renderer draws in. Applying this is harmless.
+     */
     public val dragModifier: Modifier,
 )
 

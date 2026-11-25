@@ -120,7 +120,7 @@ class CollapsedAnchorTest {
         // it has handed its column back, keeping only the strip and the divider.
         assertTrue(state.isOpen(A), "a should still be docked")
         assertTrue(withStrip > withPanel, "collapsing should give space back: $withPanel -> $withStrip")
-        val expected = WINDOW - STRIP - DividerThickness.value
+        val expected = WINDOW - STRIP - DockingSettings().dividerThickness.value
         assertTrue(
             abs(withStrip - expected) <= 1f,
             "expected the neighbour to take all but the strip ($expected), was $withStrip",
@@ -201,7 +201,7 @@ class CollapsedAnchorTest {
         onNodeWithText("Beta").performMouseInput { release() }
         waitForIdle()
 
-        val expected = WINDOW - STRIP - DividerThickness.value
+        val expected = WINDOW - STRIP - DockingSettings().dividerThickness.value
         assertTrue(
             abs(widthMidDrag - expected) <= 1f,
             "the area should reappear as a strip for the drag (expected ~$expected, was $widthMidDrag)",
@@ -221,7 +221,7 @@ class CollapsedAnchorTest {
         // the empty area and the outer split is what collapses it. Pinning inside the column
         // instead would give one placeholder the strip and the other everything left over -
         // exactly the oversized empty pane this is all meant to get rid of.
-        val expected = WINDOW - STRIP - DividerThickness.value
+        val expected = WINDOW - STRIP - DockingSettings().dividerThickness.value
         assertTrue(
             abs(contentWidth() - expected) <= 1f,
             "a split of two empty anchors should cost one strip (~$expected), was ${contentWidth()}",
@@ -284,6 +284,6 @@ class CollapsedAnchorTest {
         setContent { DockArea(state, modifier = Modifier.size(WINDOW.dp)) }
         state.undock(B)
         waitForIdle()
-        assertTrue(contentWidth() >= (WINDOW - DividerThickness.value) / 2f - 1f, "was ${contentWidth()}")
+        assertTrue(contentWidth() >= (WINDOW - DockingSettings().dividerThickness.value) / 2f - 1f, "was ${contentWidth()}")
     }
 }
