@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import com.seanproctor.docking.model.TabPreference
 
 /**
@@ -65,13 +66,21 @@ public class DockingSettings(
      * How wide the area that grabs a divider is, centred on the [dividerThickness] gap.
      *
      * When this is wider than the gap, the extra width reaches over the edges of the panes on
-     * either side and takes presses there before the panes do. This stops a drag meant for
-     * the divider from landing on a header or tab beside it. Defaults to 48dp on Android and
+     * either side. A drag that starts there moves the divider instead of the header, tab or
+     * content under it; a tap still goes to the pane. Drags are judged by their first move past
+     * touch slop. Defaults to 48dp on Android and
      * iOS, Material 3's minimum touch target, and to [dividerThickness] elsewhere. Values
      * smaller than [dividerThickness] count as [dividerThickness].
      */
     public val dividerTouchTarget: Dp = platformDividerTouchTarget,
 ) {
+    init {
+        require(dividerThickness.isSpecified && dividerThickness >= 0.dp) {
+            "dividerThickness must be a size of 0dp or more, was $dividerThickness"
+        }
+        require(dividerTouchTarget.isSpecified) { "dividerTouchTarget must be a size, was Dp.Unspecified" }
+    }
+
     /** True when empty anchors collapse to a strip rather than filling their slot. */
     public val collapsesEmptyAnchors: Boolean
         get() = collapsedAnchorThickness != Dp.Unspecified && collapsedAnchorThickness.value > 0f

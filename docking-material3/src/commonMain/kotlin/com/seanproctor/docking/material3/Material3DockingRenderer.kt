@@ -144,9 +144,9 @@ public object Material3DockingRenderer : DockingRenderer {
      * each dockable already draws its own border, so a hairline here would only add a
      * third parallel line between panes.
      *
-     * The spec also grows the capsule to 12dp x 52dp when pressed or dragged. The core
-     * measures dividers at a fixed thickness well under 12dp, so growing the thickness
-     * would just clip; only the length and color change here.
+     * The spec also grows the capsule to 12dp x 52dp when dragged. It grows only as thick as
+     * the gap allows, so the narrow desktop gap gets the longer capsule without painting over
+     * the panes.
      */
     @Composable
     override fun SplitDivider(model: DividerModel, modifier: Modifier) {

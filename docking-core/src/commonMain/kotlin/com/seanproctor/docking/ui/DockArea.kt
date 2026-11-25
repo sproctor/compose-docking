@@ -1,6 +1,7 @@
 package com.seanproctor.docking.ui
 
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,8 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -23,15 +22,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -62,7 +63,6 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.window.dockWindowDragArea
 import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -449,62 +449,103 @@ internal fun DockAreaScope.RenderSplit(
     val renderer = LocalDockingRenderer.current
     val dividerThickness = state.settings.dividerThickness
 
+    // Where presses grab the divider, along the split's axis in the split's own coordinates:
+    // the gap plus the touch target's overhang either side. Written by the layout below, read
+    // by the gesture handler; neither needs to recompose when it changes. Empty when the
+    // divider is inert or hidden.
+    val grab = remember { GrabRange() }
+
     // Neither side may be dragged, or squeezed by the window, below what its panes need. The
     // minimums are read where they are used - the drag handler and the measure lambda - so a
     // change to them is a re-measure here, not a recomposition of everything in the split.
-    val dividerDrag = Modifier
-        .pointerInput(node.id) {
-            fun minAlong(side: DockNode): Float = minSizeOf(side.id).along(currentNode.orientation).toPx()
+    //
+    // This sits on the split itself, not on the divider, and watches the Initial pass, which
+    // reaches it before the panes. That lets the grab area reach over the panes' edges
+    // without covering them: a press there still goes to the pane, and only once it moves past
+    // touch slop does the divider claim it, consuming the movement so the header, tab or
+    // content under it sees its gesture cancelled. A tap near a divider is still a tap on the
+    // button under it.
+    val dividerGrab = Modifier.pointerInput(node.id) {
+        fun minAlong(side: DockNode): Float = minSizeOf(side.id).along(currentNode.orientation).toPx()
 
-            fun total(): Float {
-                val thicknessPx = dividerThickness.toPx()
-                return if (currentNode.orientation == SplitOrientation.Horizontal) {
-                    containerSize.width - thicknessPx
-                } else {
-                    containerSize.height - thicknessPx
-                }
+        fun total(): Float {
+            val thicknessPx = dividerThickness.toPx()
+            return if (currentNode.orientation == SplitOrientation.Horizontal) {
+                containerSize.width - thicknessPx
+            } else {
+                containerSize.height - thicknessPx
             }
+        }
 
-            fun clampToMinimums(proportion: Float): Float =
-                clampProportion(proportion, total(), minAlong(currentNode.first), minAlong(currentNode.second))
+        fun clampToMinimums(proportion: Float): Float =
+            clampProportion(proportion, total(), minAlong(currentNode.first), minAlong(currentNode.second))
 
-            // Too small for both sides' minimums, the divider is pinned at their ratio wherever
-            // the pointer goes - committing that would overwrite the user's proportion with one
-            // they never chose, and it would stick once the window grew back.
-            fun squeezed(): Boolean = minAlong(currentNode.first) + minAlong(currentNode.second) >= total()
+        // Too small for both sides' minimums, the divider is pinned at their ratio wherever
+        // the pointer goes - committing that would overwrite the user's proportion with one
+        // they never chose, and it would stick once the window grew back.
+        fun squeezed(): Boolean = minAlong(currentNode.first) + minAlong(currentNode.second) >= total()
 
-            detectDragGestures(
-                onDragStart = {
-                    // From where the divider is drawn, not the stored proportion: one the
-                    // minimums override would otherwise leave a dead zone at the start of
-                    // the drag, the pointer moving and the divider not, until it caught up.
-                    dragProportion.value = clampToMinimums(currentNode.proportion)
-                    dividerDragging = true
-                },
-                onDrag = { change, amount ->
+        fun along(offset: Offset): Float =
+            if (currentNode.orientation == SplitOrientation.Horizontal) offset.x else offset.y
+
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (down.isConsumed || along(down.position) !in grab) return@awaitEachGesture
+            var dragging = false
+            var overSlop: Offset? = null
+            try {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) {
+                        if (dragging) {
+                            change.consume()
+                            if (!squeezed()) dragProportion.value?.let { state.setSplitProportion(currentNode.id, it) }
+                        }
+                        break
+                    }
+                    if (!dragging) {
+                        // Someone further out - an enclosing split's divider - already has it.
+                        if (change.isConsumed) break
+                        val moved = change.position - down.position
+                        // A mouse is precise, so it gets the much smaller slop Compose's own
+                        // drag detectors give it.
+                        val slop = if (change.type == PointerType.Mouse) {
+                            viewConfiguration.touchSlop * MOUSE_SLOP_RATIO
+                        } else {
+                            viewConfiguration.touchSlop
+                        }
+                        val distance = moved.getDistance()
+                        if (distance <= slop) continue
+                        dragging = true
+                        // From where the divider is drawn, not the stored proportion: one the
+                        // minimums override would otherwise leave a dead zone at the start of
+                        // the drag, the pointer moving and the divider not, until it caught up.
+                        dragProportion.value = clampToMinimums(currentNode.proportion)
+                        dividerDragging = true
+                        // A mouse divider follows the pointer exactly, from the press on; a
+                        // touch one only from where slop was crossed, as Compose's drags do.
+                        overSlop = if (change.type == PointerType.Mouse) moved else moved * ((distance - slop) / distance)
+                    }
+                    // Read before consuming: a consumed change reports no movement.
+                    val delta = along(overSlop ?: change.positionChange())
+                    overSlop = null
                     change.consume()
                     val total = total()
                     if (total > 0f) {
-                        val delta = if (currentNode.orientation == SplitOrientation.Horizontal) {
-                            amount.x
-                        } else {
-                            amount.y
-                        }
                         dragProportion.value =
                             clampToMinimums((dragProportion.value ?: currentNode.proportion) + delta / total)
                     }
-                },
-                onDragEnd = {
-                    if (!squeezed()) dragProportion.value?.let { state.setSplitProportion(currentNode.id, it) }
-                    dragProportion.value = null
-                    dividerDragging = false
-                },
-                onDragCancel = {
-                    dragProportion.value = null
-                    dividerDragging = false
-                },
-            )
+                }
+            } finally {
+                dragProportion.value = null
+                dividerDragging = false
+            }
         }
+    }
+
+    // The gap itself, handed to the renderer: double-click to reset, and the resize cursor.
+    val dividerGap = Modifier
         .pointerInput(node.id) {
             detectTapGestures(onDoubleTap = { state.resetSplitProportion(currentNode.id) })
         }
@@ -535,12 +576,13 @@ internal fun DockAreaScope.RenderSplit(
     val dividerVisible = !hidden && (pinned == null || pinned > 0.dp)
     // Resizing a pinned side would move a divider against a fixed-size strip, so the
     // divider goes inert until there is something there to resize.
-    val dividerModifier = if (pinned != null) Modifier else dividerDrag
+    val dividerModifier = if (pinned != null) Modifier else dividerGap
 
     Layout(
         modifier = modifier
             .onSizeChanged { containerSize = it }
-            .onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) },
+            .onGloballyPositioned { bounds.updateNode(node.id, it.boundsInRoot()) }
+            .then(dividerGrab),
         content = {
             key(node.first.id) {
                 RenderNode(
@@ -548,19 +590,10 @@ internal fun DockAreaScope.RenderSplit(
                     collapsedIn = if (firstThickness != null) node.orientation else inheritedCollapse,
                 )
             }
-            // The grab area wraps the renderer's divider rather than being handed to it, so
-            // it can be wider than the gap the renderer draws in: the layout below centres it
-            // on the gap and places it over the panes either side.
-            Box(dividerModifier, contentAlignment = Alignment.Center) {
-                renderer.SplitDivider(
-                    DividerModel(node.orientation, dividerDragging, Modifier),
-                    if (horizontal) {
-                        Modifier.fillMaxHeight().width(dividerThickness)
-                    } else {
-                        Modifier.fillMaxWidth().height(dividerThickness)
-                    },
-                )
-            }
+            renderer.SplitDivider(
+                DividerModel(node.orientation, dividerDragging, dividerModifier),
+                Modifier,
+            )
             key(node.second.id) {
                 RenderNode(
                     node.second,
@@ -573,10 +606,22 @@ internal fun DockAreaScope.RenderSplit(
         // Read here, not in composition: this is the whole point of the drag being cheap.
         val proportion = dragProportion.value ?: node.proportion
         val thickness = if (dividerVisible) dividerThickness.roundToPx() else 0
-        // An inert divider has nothing to grab, so it must not reach over the panes and take
-        // their presses.
-        val touch = if (pinned != null) thickness else max(thickness, state.settings.dividerTouchTarget.roundToPx())
-        val overhang = (touch - thickness) / 2
+        // An inert divider has nothing to grab.
+        val grabbable = dividerVisible && pinned == null
+        val overhang = if (grabbable) {
+            (state.settings.dividerTouchTarget.roundToPx() - thickness).coerceAtLeast(0) / 2
+        } else {
+            0
+        }
+        // Clamped to the split: presses outside it never reach this handler anyway, but the
+        // range should say what it actually covers.
+        fun setGrab(gapStart: Int, axis: Int) {
+            if (grabbable) {
+                grab.set((gapStart - overhang).coerceAtLeast(0), (gapStart + thickness + overhang).coerceAtMost(axis))
+            } else {
+                grab.clear()
+            }
+        }
         fun shared(available: Int): Int {
             val firstMin = minSizeOf(node.first.id).along(node.orientation).toPx()
             val secondMin = minSizeOf(node.second.id).along(node.orientation).toPx()
@@ -596,19 +641,17 @@ internal fun DockAreaScope.RenderSplit(
             }
             val secondWidth = available - firstWidth
             val firstPlaceable = measurables[0].measure(Constraints.fixed(firstWidth, height))
-            val dividerPlaceable = measurables[1].measure(Constraints.fixed(touch, height))
+            val dividerPlaceable = measurables[1].measure(Constraints.fixed(thickness, height))
             val secondPlaceable = measurables[2].measure(Constraints.fixed(secondWidth, height))
+            setGrab(firstWidth, width)
             layout(width, height) {
                 firstPlaceable.place(0, 0)
-                secondPlaceable.place(firstWidth + thickness, 0)
-                // Placed last so it sits above both sides, where its overhang takes presses
-                // before their headers and tabs do.
-                //
                 // Measuring a hidden divider to nothing is not enough to make it disappear:
                 // renderers draw into the space they are given without clipping to it, so a
                 // grip centred in a zero-width slot still paints, either side of a divider
                 // that is not there. Leaving it unplaced is what actually takes it off screen.
-                if (dividerVisible) dividerPlaceable.place(firstWidth - overhang, 0)
+                if (dividerVisible) dividerPlaceable.place(firstWidth, 0)
+                secondPlaceable.place(firstWidth + thickness, 0)
             }
         } else {
             val available = (height - thickness).coerceAtLeast(0)
@@ -619,15 +662,34 @@ internal fun DockAreaScope.RenderSplit(
             }
             val secondHeight = available - firstHeight
             val firstPlaceable = measurables[0].measure(Constraints.fixed(width, firstHeight))
-            val dividerPlaceable = measurables[1].measure(Constraints.fixed(width, touch))
+            val dividerPlaceable = measurables[1].measure(Constraints.fixed(width, thickness))
             val secondPlaceable = measurables[2].measure(Constraints.fixed(width, secondHeight))
+            setGrab(firstHeight, height)
             layout(width, height) {
                 firstPlaceable.place(0, 0)
+                if (dividerVisible) dividerPlaceable.place(0, firstHeight)
                 secondPlaceable.place(0, firstHeight + thickness)
-                if (dividerVisible) dividerPlaceable.place(0, firstHeight - overhang)
             }
         }
     }
+}
+
+/** Compose's ratio of mouse slop to touch slop. */
+private const val MOUSE_SLOP_RATIO = 0.125f
+
+/** A split's divider grab range along its axis, in px; empty when there is nothing to grab. */
+private class GrabRange {
+    private var start = 0
+    private var end = 0
+
+    fun set(start: Int, end: Int) {
+        this.start = start
+        this.end = end
+    }
+
+    fun clear() = set(0, 0)
+
+    operator fun contains(position: Float): Boolean = position >= start && position < end
 }
 
 // ----- Bounds lifecycle -----

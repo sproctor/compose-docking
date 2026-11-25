@@ -49,6 +49,24 @@ public class DockBoundsRegistry internal constructor() {
     internal fun dockableAt(position: Offset): DockableId? =
         dockableBounds.entries.firstOrNull { it.value.contains(position) }?.key
 
+    /**
+     * The dockable containing [position], or failing that the nearest one within [slack] of
+     * it. The slack covers the gaps splits leave between panes for their dividers, so a drop
+     * in one lands on a pane beside it instead of on nothing.
+     */
+    internal fun dockableNear(position: Offset, slack: Float): DockableId? =
+        dockableAt(position) ?: dockableBounds.entries
+            .map { (id, rect) -> id to distance(rect, position) }
+            .filter { it.second <= slack }
+            .minByOrNull { it.second }
+            ?.first
+
+    private fun distance(rect: Rect, position: Offset): Float {
+        val dx = maxOf(rect.left - position.x, 0f, position.x - rect.right)
+        val dy = maxOf(rect.top - position.y, 0f, position.y - rect.bottom)
+        return kotlin.math.sqrt(dx * dx + dy * dy)
+    }
+
     internal fun boundsOf(id: DockableId): Rect? = dockableBounds[id]
 
     internal fun boundsOfNode(id: NodeId): Rect? = nodeBounds[id]

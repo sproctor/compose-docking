@@ -1,13 +1,16 @@
 package com.seanproctor.docking.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -30,6 +33,7 @@ import kotlin.test.assertTrue
 
 private val A = DockableId("a")
 private val B = DockableId("b")
+private val C = DockableId("c")
 
 /** The settings Android and iOS default to: a 24dp gap with a 48dp grab area. */
 private val touchSettings = DockingSettings(dividerThickness = 24.dp, dividerTouchTarget = 48.dp)
@@ -129,5 +133,68 @@ class DividerTouchTargetTest {
         touchDrag(Offset(pane.right - px(8.dp), pane.center.y), Offset(px(40.dp), 0f))
 
         assertNear(before, widthOf("pane-a"), "pane A after a drag on its content")
+    }
+
+    @Test
+    fun aTapOverThePaneEdgeReachesThePane() = runComposeUiTest {
+        var taps = 0
+        val state = DockState(settings = touchSettings) {
+            dockable("a", title = { "Alpha" }) {
+                Box(Modifier.fillMaxSize().testTag("pane-a").clickable { taps++ })
+            }
+            dockable("b", title = { "Beta" }) { Box(Modifier.fillMaxSize().testTag("pane-b")) }
+        }
+        state.dock(A)
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East, proportion = 0.5f)
+        setContent { DockArea(state, modifier = Modifier.size(400.dp)) }
+        val pane = onNodeWithTag("pane-a").fetchSemanticsNode().boundsInRoot
+        val before = pane.width
+
+        // Inside the grab area, but a tap is not a drag: the pane's own click handler gets it.
+        onRoot().performTouchInput { click(Offset(pane.right - px(8.dp), pane.center.y)) }
+        waitForIdle()
+
+        assertEquals(1, taps, "taps reaching pane A")
+        assertNear(before, widthOf("pane-a"), "pane A after a tap")
+    }
+
+    @Test
+    fun nestedSplitsEachGrabTheirOwnDivider() = runComposeUiTest {
+        val state = DockState(settings = touchSettings) {
+            dockable("a", title = { "Alpha" }) { Box(Modifier.fillMaxSize().testTag("pane-a")) }
+            dockable("b", title = { "Beta" }) { Box(Modifier.fillMaxSize().testTag("pane-b")) }
+            dockable("c", title = { "Gamma" }) { Box(Modifier.fillMaxSize().testTag("pane-c")) }
+        }
+        state.dock(A)
+        state.dock(B, DockTarget.OnDockable(A), DockRegion.East, proportion = 0.5f)
+        state.dock(C, DockTarget.OnDockable(B), DockRegion.South, proportion = 0.5f)
+        setContent { DockArea(state, modifier = Modifier.size(400.dp)) }
+        val b = onNodeWithTag("pane-b").fetchSemanticsNode().boundsInRoot
+        val aWidth = widthOf("pane-a")
+
+        // Just above the gap between B and C, well clear of the A|B divider.
+        touchDrag(Offset(b.center.x, b.bottom - px(8.dp)), Offset(0f, px(40.dp)))
+
+        val after = onNodeWithTag("pane-b").fetchSemanticsNode().boundsInRoot
+        assertNear(b.height + movedBy(px(40.dp)), after.height, "pane B after dragging the inner divider", tolerance = px(40.dp) / 20 + 1f)
+        assertNear(aWidth, widthOf("pane-a"), "pane A while the inner divider moved")
+    }
+}
+
+class DockableNearTest {
+    private val registry = DockBoundsRegistry().apply {
+        updateDockable(A, Rect(0f, 0f, 100f, 100f))
+        updateDockable(B, Rect(124f, 0f, 224f, 100f))
+    }
+
+    @Test
+    fun aPointInTheGapResolvesToTheNearerPane() {
+        assertEquals(A, registry.dockableNear(Offset(105f, 50f), slack = 24f))
+        assertEquals(B, registry.dockableNear(Offset(120f, 50f), slack = 24f))
+    }
+
+    @Test
+    fun aPointFartherThanTheSlackResolvesToNothing() {
+        assertNull(registry.dockableNear(Offset(50f, 140f), slack = 24f))
     }
 }

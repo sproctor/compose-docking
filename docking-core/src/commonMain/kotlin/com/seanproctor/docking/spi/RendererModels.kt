@@ -86,10 +86,13 @@ public class DividerModel(
     public val orientation: SplitOrientation,
     public val isDragging: Boolean,
     /**
-     * Always [Modifier] for dividers core draws. Core puts the drag, double-click and cursor
-     * handling on a grab area around the divider
-     * ([com.seanproctor.docking.state.DockingSettings.dividerTouchTarget]), which can be
-     * wider than the space the renderer draws in. Applying this is harmless.
+     * Core-built: double-click to reset 50/50 and the resize cursor. Apply it to the divider
+     * element, which core measures to exactly the gap between the panes
+     * ([com.seanproctor.docking.state.DockingSettings.dividerThickness]).
+     *
+     * Dragging is handled by core on the split itself, so it also works from the touch target
+     * that reaches over the panes' edges
+     * ([com.seanproctor.docking.state.DockingSettings.dividerTouchTarget]).
      */
     public val dragModifier: Modifier,
 )
